@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const playAsGuestButton = document.getElementById("play-as-guest-button");
 
     // --- Constants and Variables ---
-    const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1";
+    const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1&length=5";
     const imageApiUrl = "https://api.unsplash.com/search/photos?query=";
     const definitionApiUrl =
         "https://api.dictionaryapi.dev/api/v2/entries/en/";
