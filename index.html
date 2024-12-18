@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Wizard - The Ultimate Word Guessing Game!</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>Loading the magic...</p>
+    </div>
+
+    <div class="container" style="display: none;">
+        <header>
+            <div id="user-info">
+                <div id="buttonDiv"></div>
+                <img id="user-avatar" src="default-avatar.png" alt="Avatar">
+                <span id="user-name"></span>
+                <span id="user-points">0 Points</span>
+            </div>
+            <div id="game-level">Level 1</div>
+        </header>
+
+        <div id="image-container"></div>
+        <div id="hint-container">
+            <button class="hint-button" id="image-hint-button">Image Hint</button>
+            <button class="hint-button" id="definition-hint-button">Definition Hint</button>
+            <button class="hint-button" id="letter-hint-button">Letter Hint</button>
+        </div>
+        <div id="word-container"></div>
+        <div id="guesses-container">
+            Guesses left: <span id="guesses-left"></span>
+        </div>
+
+        <div id="input-container">
+            <input type="text" id="letter-input" maxlength="1" placeholder="Enter a letter">
+            <button id="guess-button">Guess</button>
+        </div>
+
+        <div id="power-up-container">
+            <button class="power-up-button" id="extra-guess-button">Extra Guess</button>
+            <button class="power-up-button" id="skip-word-button">Skip Word</button>
+            <button class="power-up-button" id="fifty-fifty-button">50/50</button>
+        </div>
+
+        <div id="message-container"></div>
+
+        <div class="game-controls">
+            <button id="new-game-button">New Game</button>
+            <button id="sound-toggle-button">Toggle Sound</button>
+        </div>
+
+        <div id="game-log">
+            <h3>Game Log</h3>
+            <ul id="log-list"></ul>
+        </div>
+
+        <footer>
+            <div id="leaderboard-button">Leaderboard</div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token: " + response.credential);
+        }
+        window.onload = function () {
+            google.accounts.id.initialize({
+                client_id: "YOUR_GOOGLE_CLIENT_ID",
+                callback: handleCredentialResponse
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("buttonDiv"),
+                { theme: "outline", size: "large" }  // customization attributes
+            );
+            google.accounts.id.prompt(); // also display the One Tap dialog
+        }
+    </script>
+</body>
+</html>
