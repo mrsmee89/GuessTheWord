@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
             type: Date,
             default: Date.now
         },
-    }],
+    }, ],
 });
 
 const User = mongoose.model("User", userSchema);
@@ -70,18 +70,14 @@ async function verifyGoogleToken(token) {
         throw new Error("Invalid Google token");
     }
 }
-app.get('/api/config', (req, res) => {
-    res.json({
-        googleClientId: process.env.GOOGLE_CLIENT_ID,
-    });
-});
+
 // --- Middleware ---
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // --- API Routes ---
 
-// Authentication Route
+// --- Authentication Route ---
 app.post("/auth/google", async (req, res) => {
     try {
         const {
@@ -99,15 +95,17 @@ app.post("/auth/google", async (req, res) => {
                 email: payload.email,
                 avatar: payload.picture,
             });
+            console.log("new user created");
         } else {
-            // Update user data if it has changed in Google account
+            // Update user data if it has changed in the Google account
             user.name = payload.name;
             user.email = payload.email;
             user.avatar = payload.picture;
+            console.log("user info updated");
         }
         await user.save();
 
-        // Create a session or JWT token for the user here if needed
+        // Note: You might want to create a session or JWT token here
 
         res.json({
             id: user.googleId,
@@ -123,11 +121,18 @@ app.post("/auth/google", async (req, res) => {
     }
 });
 
-// Get User Data Route
-app.get("/api/user/:id", async (req, res) => {
+// --- Configuration Route ---
+app.get("/api/config", (req, res) => {
+    res.json({
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+    });
+});
+
+// --- User Data Routes ---
+app.get("/api/user/:userId", async (req, res) => {
     try {
         const user = await User.findOne({
-            googleId: req.params.id
+            googleId: req.params.userId
         });
         if (!user) {
             return res.status(404).send("User not found");
@@ -147,8 +152,39 @@ app.get("/api/user/:id", async (req, res) => {
     }
 });
 
-// Update User Points and Level Route
-app.post("/api/user/:id/update-score", async (req, res) => {
+app.post("/api/user", async (req, res) => {
+    try {
+        const {
+            googleId,
+            name,
+            email,
+            avatar
+        } = req.body;
+        let user = await User.findOne({
+            googleId
+        });
+        if (user) {
+            return res.status(400).json({
+                message: "User already exists"
+            });
+        }
+
+        user = new User({
+            googleId,
+            name,
+            email,
+            avatar,
+        });
+
+        await user.save();
+        res.status(201).json(user);
+    } catch (error) {
+        console.error("Error creating user:", error);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
+app.post("/api/user/:userId/update-score", async (req, res) => {
     try {
         const {
             points,
@@ -157,14 +193,14 @@ app.post("/api/user/:id/update-score", async (req, res) => {
             won
         } = req.body;
         const user = await User.findOne({
-            googleId: req.params.id
+            googleId: req.params.userId
         });
         if (!user) {
             return res.status(404).send("User not found");
         }
 
         user.points += points;
-        user.level = Math.max(user.level, level); // Ensure level doesn't go down
+        user.level = Math.max(user.level, level);
         user.gameHistory.push({
             word,
             won,
@@ -172,7 +208,6 @@ app.post("/api/user/:id/update-score", async (req, res) => {
         });
 
         await user.save();
-
         res.json({
             message: "Score updated successfully",
             points: user.points,
@@ -184,10 +219,12 @@ app.post("/api/user/:id/update-score", async (req, res) => {
     }
 });
 
-// --- Word and Image Fetching ---
+// --- Word and Image Fetching (Not directly related to user data) ---
 
 const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1";
 const imageApiUrl = "https://api.unsplash.com/search/photos?query=";
+const definitionApiUrl =
+    "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
 async function fetchWord() {
     try {
@@ -211,11 +248,17 @@ async function fetchWord() {
 
 async function fetchWordDefinition(word) {
     try {
-        // Placeholder for a real definition API call
-        return "Definition not found";
+        const response = await fetch(`${definitionApiUrl}${word}`);
+        const data = await response.json();
+
+        if (data[0] ?.meanings[0] ?.definitions[0] ?.definition) {
+            return data[0].meanings[0].definitions[0].definition;
+        } else {
+            return "Definition not found.";
+        }
     } catch (error) {
         console.error("Error fetching definition:", error);
-        return "Definition not found";
+        return "Definition not found.";
     }
 }
 
@@ -237,18 +280,19 @@ async function fetchImageForWord(word) {
 }
 
 // --- Socket.IO ---
+const connectedUsers = {}; // Keep track of connected users
+
 io.on("connection", (socket) => {
     console.log("New client connected:", socket.id);
 
-    // Handle user connection (you might want to associate the socket with a user here)
     socket.on("user-connected", (userId) => {
         console.log("User connected:", userId);
-        // You can store the userId and socket.id in a map or database to keep track of connected users
+        connectedUsers[userId] = socket.id; // Store socket ID
     });
 
     socket.on("guess", (data) => {
-        // Broadcast the guess to all other connected clients
-        socket.broadcast.emit("guess-broadcast", data);
+        console.log("guess data received", data)
+        socket.broadcast.emit("guess-broadcast", data); // Broadcast to all except sender
     });
 
     socket.on("update-score", async (data) => {
@@ -263,8 +307,6 @@ io.on("connection", (socket) => {
 
             user.points += data.points;
             user.level = Math.max(user.level, data.level);
-
-            // Add to game history if the game was played (not skipped)
             if (data.word) {
                 user.gameHistory.push({
                     word: data.word,
@@ -272,18 +314,24 @@ io.on("connection", (socket) => {
                     timestamp: new Date(),
                 });
             }
-
             await user.save();
 
-            // Emit to the specific user who played the game
-            socket.emit("score-updated", {
+            // Emit to the specific user who made the update
+            const userSocketId = connectedUsers[data.userId];
+            if (userSocketId) {
+                io.to(userSocketId).emit("score-updated", {
+                    userId: user.googleId,
+                    points: user.points,
+                    level: user.level,
+                });
+            }
+
+            // Optionally, broadcast to all other users for real-time updates
+            socket.broadcast.emit("score-updated", {
                 userId: user.googleId,
                 points: user.points,
                 level: user.level,
             });
-
-            // Optionally, broadcast to other users if you want a real-time leaderboard
-            // io.emit('score-updated', { userId: user.googleId, points: user.points, level: user.level });
         } catch (err) {
             console.error("Error updating user data:", err);
         }
@@ -291,11 +339,19 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id);
-        // You might want to handle user disconnection here (e.g., remove them from a connected users list)
+        // Remove user from connectedUsers list
+        for (const userId in connectedUsers) {
+            if (connectedUsers[userId] === socket.id) {
+                delete connectedUsers[userId];
+                break;
+            }
+        }
     });
 });
 
 // --- Serve Static Files ---
+app.use(express.static(path.join(__dirname, "public")));
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });

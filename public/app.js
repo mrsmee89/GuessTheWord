@@ -140,27 +140,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-async function fetchWordDefinition(word) {
-    try {
-        const response = await fetch(`${definitionApiUrl}${word}`);
-        const data = await response.json();
+    async function fetchWordDefinition(word) {
+        try {
+            const response = await fetch(`${definitionApiUrl}${word}`);
+            const data = await response.json();
 
-        // Check if the response is an array and has at least one element
-        if (Array.isArray(data) && data.length > 0) {
-            const definition = data[0]?.meanings[0]?.definitions[0]?.definition;
-
-            // Check if the definition exists and is not an empty string
-            if (definition && definition.trim() !== "") {
-                return definition;
+            if (data[0] ?.meanings[0] ?.definitions[0] ?.definition) {
+                return data[0].meanings[0].definitions[0].definition;
+            } else {
+                return "Definition not found.";
             }
+        } catch (error) {
+            console.error("Error fetching definition:", error);
+            return "Definition not found.";
         }
-
-        return "Definition not found.";
-    } catch (error) {
-        console.error("Error fetching definition:", error);
-        return "Definition not found.";
     }
-}
 
     // --- Fetching Images ---
     async function fetchImageForWord(word) {
@@ -283,19 +277,12 @@ async function fetchWordDefinition(word) {
         if (!isGuestUser) {
             userPoints += 10;
             gameLevel++;
+            // Update user data on the server when the game is won
+            updateUserScore(userProfile.id, 10, gameLevel, selectedWord, true);
         }
+
         gameInProgress = false;
         endGame();
-
-        if (userProfile && !isGuestUser) {
-            socket.emit("update-score", {
-                userId: userProfile.id,
-                points: 10,
-                level: gameLevel,
-                word: selectedWord,
-                won: true,
-            });
-        }
     }
 
     function gameLost() {
@@ -309,13 +296,8 @@ async function fetchWordDefinition(word) {
         endGame();
 
         if (userProfile && !isGuestUser) {
-            socket.emit("update-score", {
-                userId: userProfile.id,
-                points: 0, // Or a negative value
-                level: gameLevel,
-                word: selectedWord,
-                won: false,
-            });
+            // Update user data on the server when the game is lost
+            updateUserScore(userProfile.id, 0, gameLevel, selectedWord, false);
         }
     }
 
@@ -323,6 +305,10 @@ async function fetchWordDefinition(word) {
     function endGame() {
         enableGameControls(false);
         updateDisplay();
+        // Re-enable the "Play as Guest" button
+        if (isGuestUser) {
+            playAsGuestButton.style.display = "inline-block";
+        }
     }
 
     function enableGameControls(enable) {
@@ -444,10 +430,12 @@ async function fetchWordDefinition(word) {
     function addLogEntry(entry, isUserGuess = false) {
         const newLogItem = document.createElement("li");
         newLogItem.textContent = entry;
+
         // Add a special class to the user's guess
         if (isUserGuess) {
             newLogItem.classList.add("user-guess");
         }
+
         logList.prepend(newLogItem);
 
         if (logList.children.length > 10) {
@@ -461,79 +449,79 @@ async function fetchWordDefinition(word) {
     }
 
     // --- Google Sign-In and Guest Mode ---
-async function initializeGoogleSignIn() {
-    showLoadingScreen();
+    async function initializeGoogleSignIn() {
+        showLoadingScreen();
 
-    // 1. Get the Google Client ID from the environment variable (on the server)
-    const configResponse = await fetch('/api/config');
-    const config = await configResponse.json();
-    googleClientId = config.googleClientId;
+        // Fetch the Google Client ID from the server
+        let googleClientId;
+        try {
+            const configResponse = await fetch("/api/config");
+            const config = await configResponse.json();
+            googleClientId = config.googleClientId;
+        } catch (error) {
+            console.error("Error fetching Google Client ID:", error);
+            messageContainer.textContent =
+                "Error: Could not load Google Sign-In configuration.";
+            initializeGuestUser(); // Fallback to guest mode
+            hideLoadingScreen();
+            return;
+        }
 
-    // 2. Check if the Client ID is set
-    if (!googleClientId) {
-        console.error("Error: GOOGLE_CLIENT_ID environment variable not set.");
-        messageContainer.textContent =
-            "Error: Google Sign-In configuration is missing.";
-        initializeGuestUser(); // Fallback to guest mode
-        hideLoadingScreen();
-        return; // Stop if Client ID is not set
-    }
+        // Check if Google API is loaded (with a timeout)
+        let googleApiLoaded = false;
+        const googleApiTimeout = 5000; // 5 seconds timeout
 
-    // 3. Check if Google API is loaded (with a timeout) 
-    // (This part remains the same from the previous response)
-    let googleApiLoaded = false;
-    const googleApiTimeout = 5000; // 5 seconds timeout
-
-    const googleApiLoadedPromise = new Promise((resolve) => {
-        const checkGoogleApi = () => {
-            if (typeof google !== "undefined") {
-                googleApiLoaded = true;
-                resolve();
-            } else {
-                setTimeout(checkGoogleApi, 100); // Check again after 100ms
-            }
-        };
-        checkGoogleApi();
-    });
-
-    try {
-        await Promise.race([
-            googleApiLoadedPromise,
-            new Promise((_, reject) =>
-                setTimeout(() => reject("Google API load timeout"), googleApiTimeout)
-            ),
-        ]);
-    } catch (error) {
-        console.error("Error loading Google API:", error);
-        messageContainer.textContent =
-            "Error: Google API not loaded. Sign in may not be available.";
-        initializeGuestUser(); // Fallback to guest mode
-        hideLoadingScreen();
-        return; // Stop if API load fails or times out
-    }
-
-    // 4. Initialize Google Sign-In (This part remains the same)
-    try {
-        google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: handleCredentialResponse,
+        const googleApiLoadedPromise = new Promise((resolve) => {
+            const checkGoogleApi = () => {
+                if (typeof google !== "undefined") {
+                    googleApiLoaded = true;
+                    resolve();
+                } else {
+                    setTimeout(checkGoogleApi, 100); // Check again after 100ms
+                }
+            };
+            checkGoogleApi();
         });
-        google.accounts.id.renderButton(
-            document.getElementById("buttonDiv"), {
-                theme: "outline",
-                size: "large"
-            }
-        );
-        google.accounts.id.prompt();
-    } catch (error) {
-        console.error("Error initializing Google Sign-In:", error);
-        messageContainer.textContent =
-            "Error: Could not initialize Google Sign-In.";
-        initializeGuestUser(); // Fallback to guest mode
-    }
 
-    hideLoadingScreen();
-}
+        // Wait for Google API to load or timeout
+        try {
+            await Promise.race([
+                googleApiLoadedPromise,
+                new Promise((_, reject) =>
+                    setTimeout(() => reject("Google API load timeout"), googleApiTimeout)
+                ),
+            ]);
+        } catch (error) {
+            console.error("Error loading Google API:", error);
+            messageContainer.textContent =
+                "Error: Google API not loaded. Sign in may not be available.";
+            initializeGuestUser(); // Fallback to guest mode
+            hideLoadingScreen();
+            return; // Stop if API load fails or times out
+        }
+
+        // Initialize Google Sign-In
+        try {
+            google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: handleCredentialResponse,
+            });
+            google.accounts.id.renderButton(
+                document.getElementById("buttonDiv"), {
+                    theme: "outline",
+                    size: "large"
+                }
+            );
+            google.accounts.id.prompt();
+        } catch (error) {
+            console.error("Error initializing Google Sign-In:", error);
+            messageContainer.textContent =
+                "Error: Could not initialize Google Sign-In.";
+            initializeGuestUser(); // Fallback to guest mode
+        }
+
+        hideLoadingScreen();
+    }
 
     async function handleCredentialResponse(response) {
         try {
@@ -616,6 +604,77 @@ async function initializeGoogleSignIn() {
         } catch (error) {
             console.error("Error:", error);
             messageContainer.textContent = "Error fetching user data.";
+        }
+    }
+
+    // --- Create New User ---
+    async function createNewUser(userProfile) {
+        try {
+            const response = await fetch("/api/user", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    googleId: userProfile.id,
+                    name: userProfile.name,
+                    email: userProfile.email,
+                    avatar: userProfile.avatar,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to create new user");
+            }
+
+            const newUser = await response.json();
+            console.log("New user created:", newUser);
+
+            return newUser;
+        } catch (error) {
+            console.error("Error creating new user:", error);
+            messageContainer.textContent = "Error creating new user.";
+            return null;
+        }
+    }
+
+    // --- Update User Score ---
+    async function updateUserScore(userId, points, level, word, won) {
+        try {
+            const response = await fetch(`/api/user/${userId}/update-score`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    points,
+                    level,
+                    word,
+                    won
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update user score");
+            }
+
+            const data = await response.json();
+            console.log("User score updated:", data);
+
+            // Update user points and level in the UI
+            userPoints = data.points;
+            gameLevel = data.level;
+            updateDisplay();
+
+            // Notify other clients about the score update
+            socket.emit("score-updated", {
+                userId: userId,
+                points: userPoints,
+                level: gameLevel,
+            });
+        } catch (error) {
+            console.error("Error updating user score:", error);
+            messageContainer.textContent = "Error updating user score.";
         }
     }
 
