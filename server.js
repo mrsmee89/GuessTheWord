@@ -1,27 +1,24 @@
-require('dotenv').config();
+require('dotenv').config({ path: '.env' }); 
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
-const jwt = require('jsonwebtoken');
-const fs = require('fs');
+const { OAuth2Client } = require('google-auth-library'); // For JWT verification
+const fs = require('fs'); // If you still need to use gameLogs.json
 const path = require('path');
 
-// Initialize Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
-
-// Initialize Socket.IO
 const io = socketIo(server);
 
-// Connect to MongoDB
+// MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('MongoDB connected'))
-.catch(err => console.error('MongoDB connection error:', err));
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error('MongoDB connection error:', err));
 
-// MongoDB Schema for User
+// User Schema
 const userSchema = new mongoose.Schema({
-    googleId: String,
+    googleId: { type: String, required: true, unique: true, index: true }, // Added index
     name: String,
     email: String,
     avatar: String,
@@ -31,17 +28,24 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Middleware to parse JSON requests
+// Google OAuth2 Client
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Middleware
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public'))); // Serve from 'public'
 
-// Serve static files
-app.use(express.static(__dirname));
-
-// Authentication Route (Simplified Example)
+// Authentication Route
 app.post('/auth/google', async (req, res) => {
     try {
         const credential = req.body.credential;
-        const decoded = jwt.decode(credential); // In production, verify this token!
+
+        // Verify the JWT
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const decoded = ticket.getPayload();
 
         let user = await User.findOne({ googleId: decoded.sub });
         if (!user) {
@@ -61,11 +65,10 @@ app.post('/auth/google', async (req, res) => {
     }
 });
 
-// Socket.IO Connection Handling
+// Socket.IO
 io.on('connection', (socket) => {
     console.log('New client connected');
 
-    // Handle game over event
     socket.on('gameOver', async (data) => {
         try {
             const user = await User.findOne({ name: data.user });
@@ -73,14 +76,16 @@ io.on('connection', (socket) => {
                 user.points = data.points;
                 user.level = data.level;
                 await user.save();
+                console.log(`User ${data.user} data updated after game over.`);
+            } else {
+                console.error(`User not found: ${data.user}`);
             }
+            io.emit('gameLogUpdate', `${data.user} lost the game. The word was "${data.word}".`);
         } catch (err) {
             console.error('Error updating user data:', err);
         }
-        io.emit('gameLogUpdate', `${data.user} lost the game. The word was "${data.word}".`);
     });
 
-    // Handle game won event
     socket.on('gameWon', async (data) => {
         try {
             const user = await User.findOne({ name: data.user });
@@ -88,11 +93,14 @@ io.on('connection', (socket) => {
                 user.points = data.points;
                 user.level = data.level;
                 await user.save();
+                console.log(`User ${data.user} data updated after winning.`);
+            } else {
+                console.error(`User not found: ${data.user}`);
             }
+            io.emit('gameLogUpdate', `${data.user} won the game! Word: ${data.word}, Points: ${data.points}, Level: ${data.level}`);
         } catch (err) {
             console.error('Error updating user data:', err);
         }
-        io.emit('gameLogUpdate', `${data.user} won the game! Word: ${data.word}, Points: ${data.points}, Level: ${data.level}`);
     });
 
     socket.on('disconnect', () => {
@@ -100,7 +108,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

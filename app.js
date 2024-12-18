@@ -1,4 +1,4 @@
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
     const imageContainer = document.getElementById("image-container");
     const wordContainer = document.getElementById("word-container");
@@ -23,11 +23,13 @@
     const leaderboardButton = document.getElementById("leaderboard-button");
     const loadingScreen = document.getElementById('loading-screen');
     const container = document.querySelector('.container');
+    const signInContainer = document.getElementById("buttonDiv"); // Get the sign in button container
 
     // Constants and Variables
     const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1";
     const imageApiUrl = "https://api.unsplash.com/search/photos?query=";
-    const imageApiKey = "YOUR-UNSPLASH-API";
+    const imageApiKey = "YOUR-UNSPLASH-API"; // Replace with your Unsplash API Key
+    const googleClientId = "YOUR_GOOGLE_CLIENT_ID"; // Replace with your Google Client ID
 
     let selectedWord = "";
     let displayedWord = "";
@@ -39,6 +41,7 @@
     let soundEnabled = true;
     const socket = io(); // Connect to the Socket.IO server
 
+    // Socket.IO Events
     socket.on('connect', () => {
         console.log('Connected to socket server');
     });
@@ -47,34 +50,19 @@
         addLogEntry(logEntry);
     });
 
-    // Modify checkGameStatus to send updates through Socket.IO
-    function checkGameStatus() {
-        // ... (rest of the logic)
-            if (guessesLeft === 0) {
-            messageContainer.textContent = `You lost! The word was ${selectedWord}.`;
-            addLogEntry(`${userProfile.name} lost the game. The word was "${selectedWord}".`);
-            // Send update through Socket.IO
-            socket.emit('gameOver', { user: userProfile.name, word: selectedWord, level: gameLevel, points: userPoints });
-            endGame();
-        } else if (displayedWord === selectedWord) {
-            userPoints += 10; // Award points for correct word
-            gameLevel++; // Increase the level
-            messageContainer.textContent = "You won!";
-            addLogEntry(`${userProfile.name} won the game! Word: ${selectedWord}, Points: ${userPoints}, Level: ${gameLevel}`);
-            // Send update through Socket.IO
-            socket.emit('gameWon', { user: userProfile.name, word: selectedWord, level: gameLevel, points: userPoints });
-            endGame();
-        }
-    }
-
     // Game Initialization
     async function initializeGame() {
+        clearTimeout(); // prevents the game to run multiple times
         if (!userProfile) {
             messageContainer.textContent = "Please sign in to play.";
             return;
         }
-        
+
         try {
+            // Hide game elements and show loading screen
+            container.style.display = 'none';
+            loadingScreen.style.display = 'block';
+
             const wordData = await fetchWord();
             selectedWord = wordData.word;
             console.log("selected word: " + selectedWord);
@@ -86,6 +74,10 @@
         } catch (error) {
             console.error("Error initializing game:", error);
             messageContainer.textContent = "Error: Could not initialize the game.";
+        } finally {
+            // Hide loading screen and show game content
+            loadingScreen.style.display = 'none';
+            container.style.display = 'block';
         }
     }
 
@@ -93,7 +85,9 @@
         try {
             const response = await fetch(wordApiUrl);
             const data = await response.json();
-            return { word: data[0], definition: 'Sample definition' };
+            // Fetch definition (you'll likely need another API for this)
+            const definition = await fetchWordDefinition(data[0]); 
+            return { word: data[0], definition: definition };
         } catch (error) {
             console.error("Error fetching word:", error);
             // Fallback word list
@@ -103,6 +97,22 @@
             ];
             const randomIndex = Math.floor(Math.random() * fallbackWords.length);
             return fallbackWords[randomIndex];
+        }
+    }
+
+    // Placeholder function for fetching word definition (replace with actual API call)
+    async function fetchWordDefinition(word) {
+        // You might need to use a different API for definitions (e.g., Dictionary API)
+        // This is just a placeholder, replace with actual logic
+        try {
+            // Example using a hypothetical definition API:
+            // const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            // const data = await response.json();
+            // return data[0]?.meanings[0]?.definitions[0]?.definition || "Definition not found.";
+            return "Definition not found";
+        } catch (error) {
+            console.error("Error fetching definition:", error);
+            return "Definition not found.";
         }
     }
 
@@ -116,11 +126,11 @@
             } else {
                 imageContainer.innerHTML = '<p>No image found</p>';
             }
+            imageContainer.classList.add("fade-in"); // add a fade in effect
         } catch (error) {
             console.error("Error fetching image:", error);
             imageContainer.innerHTML = '<p>Error loading image</p>';
         }
-        imageContainer.classList.add("fade-in");
     }
 
     function initializeGameState() {
@@ -131,7 +141,7 @@
     }
 
     function updateDisplay() {
-        wordContainer.innerHTML = displayedWord.split('').join(' ');
+        wordContainer.textContent = displayedWord.split('').join(' '); // Updated to use textContent
         guessesLeftSpan.textContent = guessesLeft;
         messageContainer.textContent = "";
         letterInput.value = "";
@@ -142,8 +152,19 @@
     }
 
     // Event Handlers
+    guessButton.addEventListener("click", () => {
+        checkGuess(); // Call checkGuess directly
+    });
+
+    letterInput.addEventListener("keyup", (event) => {
+        if (event.key === "Enter") {
+            checkGuess();
+        }
+    });
+
     function checkGuess() {
-        const letter = letterInput.value.toLowerCase();
+        const letter = letterInput.value.trim().toLowerCase(); // Trim whitespace
+        letterInput.value = ""; // Clear the input after reading
 
         if (!isValidLetter(letter)) {
             messageContainer.textContent = "Invalid input. Please enter a single letter.";
@@ -174,7 +195,7 @@
     }
 
     function isValidLetter(letter) {
-        return /^[a-z]$/i.test(letter);
+        return /^[a-z]$/.test(letter);
     }
 
     function updateDisplayedWord(letter) {
@@ -193,12 +214,16 @@
         if (guessesLeft === 0) {
             messageContainer.textContent = `You lost! The word was ${selectedWord}.`;
             addLogEntry(`${userProfile.name} lost the game. The word was "${selectedWord}".`);
+            // Send update through Socket.IO
+            socket.emit('gameOver', { user: userProfile.name, word: selectedWord, level: gameLevel, points: userPoints });
             endGame();
         } else if (displayedWord === selectedWord) {
             userPoints += 10; // Award points for correct word
             gameLevel++; // Increase the level
             messageContainer.textContent = "You won!";
             addLogEntry(`${userProfile.name} won the game! Word: ${selectedWord}, Points: ${userPoints}, Level: ${gameLevel}`);
+            // Send update through Socket.IO
+            socket.emit('gameWon', { user: userProfile.name, word: selectedWord, level: gameLevel, points: userPoints });
             endGame();
         }
     }
@@ -241,6 +266,13 @@
     function showImageHint() {
         // Placeholder for image hint logic
         // This could involve showing a blurred image or a part of the image
+        imageContainer.classList.remove("fade-in");
+        imageContainer.classList.add("blur");
+        // Remove the blur after a timeout
+        setTimeout(() => {
+            imageContainer.classList.remove("blur");
+        }, 5000); // Adjust the timeout as needed (e.g., 5000 milliseconds = 5 seconds)
+
     }
 
     function showDefinitionHint() {
@@ -315,7 +347,7 @@
     // Google Sign-In
     function handleCredentialResponse(response) {
         // Decode the JWT to get user information
-        const decoded = parseJwt(response.credential); // Implement parseJwt() - see below
+        const decoded = parseJwt(response.credential); 
         userProfile = {
             id: decoded.sub,
             name: decoded.name,
@@ -326,12 +358,13 @@
         // Update UI with user info
         userName.textContent = userProfile.name;
         userAvatar.src = userProfile.avatar;
+        signInContainer.style.display = "none"; // Hide the sign-in button
 
         // Initialize the game for the signed-in user
         initializeGame();
     }
 
-    // Helper function to decode JWT (you might need a library for this in production)
+    // Helper function to decode JWT 
     function parseJwt(token) {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -343,7 +376,6 @@
     }
 
     // Event Listeners
-    guessButton.addEventListener("click", checkGuess);
     newGameButton.addEventListener("click", initializeGame);
     soundToggleButton.addEventListener("click", toggleSound);
     imageHintButton.addEventListener("click", showImageHint);
@@ -360,7 +392,7 @@
     // Initialize Google Sign-In
     window.onload = function () {
         google.accounts.id.initialize({
-            client_id: "YOUR_GOOGLE_CLIENT_ID",
+            client_id: googleClientId,
             callback: handleCredentialResponse
         });
         google.accounts.id.renderButton(
@@ -368,9 +400,9 @@
             { theme: "outline", size: "large" }
         );
         google.accounts.id.prompt();
-    };
 
-    // Show game content after loading
-    loadingScreen.style.display = 'none';
-    container.style.display = 'block';
+        // Hide game content initially
+        container.style.display = 'none';
+        loadingScreen.style.display = 'none';
+    };
 });
