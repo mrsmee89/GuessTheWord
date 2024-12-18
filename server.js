@@ -35,6 +35,10 @@ const User = mongoose.model('User', userSchema);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Serve from 'public'
 
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Authentication Route
 // app.post('/auth/google', async (req, res) => {
 //     try {
@@ -64,6 +68,7 @@ app.use(express.static(path.join(__dirname, 'public'))); // Serve from 'public'
 //         res.status(500).send('Authentication failed');
 //     }
 // });
+
 
 // Socket.IO
 io.on('connection', (socket) => {
