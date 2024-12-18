@@ -524,14 +524,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 async function handleCredentialResponse(response) {
+
+
     try {
         const decoded = parseJwt(response.credential);
+
         isGuestUser = false; // Reset guest user flag
         userProfile = {
             id: decoded.sub,
             name: decoded.name,
             email: decoded.email,
             avatar: decoded.picture,
+            gameHistory: decoded.gameHistory
         };
 
         userName.textContent = userProfile.name;
@@ -551,14 +555,29 @@ async function handleCredentialResponse(response) {
             }),
         });
 
+        console.log("Server response status:", serverResponse.status); // Log status
+
         if (!serverResponse.ok) {
-            throw new Error("Server-side authentication failed");
+            const errorText = await serverResponse.text(); // Get error text from server
+            console.error("Server error:", errorText);
+            throw new Error(`Server-side authentication failed: ${errorText}`);
         }
 
         const serverData = await serverResponse.json();
+        console.log("User data from server:", serverData);
 
         // Fetch user data from server and update UI
-        await fetchUserData(userProfile.id);
+        // Use the data returned from the server to update UI
+        userPoints = serverData.points;
+        gameLevel = serverData.level;
+        updateDisplay();
+        serverData.gameHistory.forEach((entry) => {
+            addLogEntry(
+                `${entry.won ? "Won" : "Lost"} with "${
+          entry.word
+        }" on ${new Date(entry.timestamp).toLocaleString()}`
+            );
+        });
 
         // Notify the server that the user has connected
         socket.emit("user-connected", userProfile.id);
@@ -567,8 +586,7 @@ async function handleCredentialResponse(response) {
         initializeGame();
     } catch (error) {
         console.error("Error during Google Sign-In:", error);
-        messageContainer.textContent =
-            "Error: Could not sign in with Google.";
+        messageContainer.textContent = "Error: Could not sign in with Google.";
     }
 }
 

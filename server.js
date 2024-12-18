@@ -7,6 +7,9 @@ const path = require("path");
 const {
     OAuth2Client
 } = require("google-auth-library");
+const session = require("express-session");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 
 const app = express();
 const server = http.createServer(app);
@@ -74,6 +77,21 @@ async function verifyGoogleToken(token) {
 // --- Middleware ---
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+app.use(cookieParser());
+
+// --- Session Configuration ---
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET, // Set this in your .env file!
+        resave: false,
+        saveUninitialized: true,
+        cookie: {
+            secure: process.env.NODE_ENV === "production", // Use secure cookies in production (HTTPS)
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week (adjust as needed)
+            httpOnly: true,
+        },
+    })
+);
 
 // --- API Routes ---
 
@@ -88,25 +106,37 @@ app.post("/auth/google", async (req, res) => {
         let user = await User.findOne({
             googleId: payload.sub
         });
-        console.log(user);
         if (!user) {
             user = new User({
                 googleId: payload.sub,
                 name: payload.name,
                 email: payload.email,
                 avatar: payload.picture,
+                gameHistory: []
             });
-            console.log("new user created");
+            console.log("New user created");
         } else {
             // Update user data if it has changed in the Google account
             user.name = payload.name;
             user.email = payload.email;
             user.avatar = payload.picture;
-            console.log("user info updated");
+            console.log("User info updated");
         }
         await user.save();
 
-        // Note: You might want to create a session or JWT token here
+        // Create JWT token
+        const token = jwt.sign({
+            userId: user.googleId
+        }, process.env.JWT_SECRET, {
+            expiresIn: "7d", // Token expires in 7 days (adjust as needed)
+        });
+
+        // Set JWT token in HTTP-only cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // Secure in production
+            maxAge: 1000 * 60 * 60 * 24 * 7, // Same as token expiration
+        });
 
         res.json({
             id: user.googleId,
@@ -115,6 +145,7 @@ app.post("/auth/google", async (req, res) => {
             avatar: user.avatar,
             points: user.points,
             level: user.level,
+            gameHistory: user.gameHistory
         });
     } catch (error) {
         console.error("Authentication error:", error);
@@ -129,15 +160,57 @@ app.get("/api/config", (req, res) => {
     });
 });
 
+// --- Protected Route Example (with JWT verification) ---
+app.get("/api/protected", (req, res) => {
+    const token = req.cookies.token; // Get token from cookie
+
+    if (!token) {
+        return res.status(401).send("Unauthorized: No token provided");
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // You can now fetch the user from the database using decoded.userId if needed
+        // Example:
+        // const user = await User.findOne({ googleId: decoded.userId });
+        // req.user = user; // Attach the user to the request object
+
+        res.json({
+            message: "This is a protected route",
+            userId: decoded.userId
+        });
+    } catch (error) {
+        console.error("JWT verification error:", error);
+        res.status(401).send("Unauthorized: Invalid token");
+    }
+});
+
 // --- User Data Routes ---
+
+// GET /api/user/:userId - Get user data by Google ID
 app.get("/api/user/:userId", async (req, res) => {
     try {
+        // Check for JWT token in Authorization header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).send("Unauthorized: Bearer token required");
+        }
+
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
+
+        // Check if the user making the request is the same as the one being requested
+        if (decoded.userId !== req.params.userId) {
+            return res.status(403).send("Forbidden: You can only access your own data");
+        }
+
         const user = await User.findOne({
             googleId: req.params.userId
         });
         if (!user) {
             return res.status(404).send("User not found");
         }
+
         res.json({
             id: user.googleId,
             name: user.name,
@@ -149,10 +222,14 @@ app.get("/api/user/:userId", async (req, res) => {
         });
     } catch (error) {
         console.error("Error fetching user data:", error);
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).send("Unauthorized: Invalid token");
+        }
         res.status(500).send("Internal Server Error");
     }
 });
 
+// POST /api/user - Create a new user
 app.post("/api/user", async (req, res) => {
     try {
         const {
@@ -185,6 +262,7 @@ app.post("/api/user", async (req, res) => {
     }
 });
 
+// POST /api/user/:userId/update-score - Update user score and game history
 app.post("/api/user/:userId/update-score", async (req, res) => {
     try {
         const {
@@ -220,32 +298,30 @@ app.post("/api/user/:userId/update-score", async (req, res) => {
     }
 });
 
-// --- Word and Image Fetching (Not directly related to user data) ---
+// --- Word, Image, and Definition Fetching ---
 
-const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1";
+const wordApiUrl = "https://random-word-api.herokuapp.com/word";
 const imageApiUrl = "https://api.unsplash.com/search/photos?query=";
 const definitionApiUrl =
     "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
-async function fetchWord() {
+// --- Word Fetching Route ---
+app.get("/api/word", async (req, res) => {
+    const length = req.query.length || 5; // Default to 5 if not specified
     try {
-        const response = await fetch(wordApiUrl);
+        const response = await fetch(`${wordApiUrl}?number=1&length=${length}`);
         const data = await response.json();
-        const definition = await fetchWordDefinition(data[0]);
-        return {
-            word: data[0],
+        const word = data[0];
+        const definition = await fetchWordDefinition(word);
+        res.json({
+            word,
             definition
-        };
+        });
     } catch (error) {
         console.error("Error fetching word:", error);
-        const fallbackWords = [{
-            word: "example",
-            definition: "A representative instance."
-        }, ];
-        const randomIndex = Math.floor(Math.random() * fallbackWords.length);
-        return fallbackWords[randomIndex];
+        res.status(500).send("Error fetching word");
     }
-}
+});
 
 async function fetchWordDefinition(word) {
     try {
@@ -293,7 +369,8 @@ io.on("connection", (socket) => {
 
     socket.on("guess", (data) => {
         console.log("guess data received", data)
-        socket.broadcast.emit("guess-broadcast", data); // Broadcast to all except sender
+        // Emit the guess to all sockets except the one that sent the guess
+        socket.broadcast.emit("guess-broadcast", data);
     });
 
     socket.on("update-score", async (data) => {
@@ -327,7 +404,7 @@ io.on("connection", (socket) => {
                 });
             }
 
-            // Optionally, broadcast to all other users for real-time updates
+            // Broadcast to all other users for real-time updates
             socket.broadcast.emit("score-updated", {
                 userId: user.googleId,
                 points: user.points,
