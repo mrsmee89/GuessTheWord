@@ -8,6 +8,7 @@ const {
     OAuth2Client
 } = require("google-auth-library");
 const session = require("express-session");
+const MongoDBStore = require("connect-mongodb-session")(session);
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 
@@ -55,6 +56,16 @@ const userSchema = new mongoose.Schema({
         },
     }, ],
 });
+// Configure the MongoDBStore
+const store = new MongoDBStore({
+    uri: process.env.MONGODB_URI, // Your MongoDB connection string
+    collection: "sessions", // Name of the collection to store sessions
+});
+
+// Catch errors from the store
+store.on("error", function (error) {
+    console.error("MongoDBStore Error:", error);
+});
 
 const User = mongoose.model("User", userSchema);
 
@@ -79,17 +90,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 
-// --- Session Configuration ---
+// Configure express-session to use the MongoDBStore
 app.use(
     session({
-        secret: process.env.SESSION_SECRET, // Set this in your .env file!
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: true,
         cookie: {
-            secure: process.env.NODE_ENV === "production", // Use secure cookies in production (HTTPS)
-            maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week (adjust as needed)
-            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+            // httpOnly: true,
         },
+        store: store, // Use the MongoDBStore instance
     })
 );
 
