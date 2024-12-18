@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Wizard - The Ultimate Word Guessing Game!</title>
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="loading-screen">
@@ -18,6 +22,7 @@
         <header>
             <div id="user-info">
                 <div id="buttonDiv"></div>
+                <button id="play-as-guest-button">Play as Guest</button>
                 <img id="user-avatar" src="default-avatar.png" alt="Avatar">
                 <span id="user-name"></span>
                 <span id="user-points">0 Points</span>
@@ -60,26 +65,10 @@
         </div>
 
         <footer>
-            <div id="leaderboard-button">Leaderboard</div>
+            <button id="leaderboard-button">Leaderboard</button>
         </footer>
     </div>
 
     <script src="app.js"></script>
-    <script>
-        function handleCredentialResponse(response) {
-            console.log("Encoded JWT ID token: " + response.credential);
-        }
-        window.onload = function () {
-            google.accounts.id.initialize({
-                client_id: "YOUR_GOOGLE_CLIENT_ID",
-                callback: handleCredentialResponse
-            });
-            google.accounts.id.renderButton(
-                document.getElementById("buttonDiv"),
-                { theme: "outline", size: "large" }  // customization attributes
-            );
-            google.accounts.id.prompt(); // also display the One Tap dialog
-        }
-    </script>
 </body>
 </html>

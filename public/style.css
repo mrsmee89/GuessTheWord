@@ -1,297 +1,348 @@
+/* --- General Styles --- */
 body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f0f0f0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-    overflow: hidden; /* Prevent scrollbars during animations */
+  font-family: "Poppins", sans-serif; /* Modern font */
+  background-color: #f8f9fa; /* Light background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh; /* Use min-height for responsiveness */
+  margin: 0;
+  padding: 20px; /* Add padding for smaller screens */
+  box-sizing: border-box;
 }
 
-/* Loading Screen */
+/* --- Loading Screen --- */
 #loading-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.9);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 100; /* Ensure it's on top */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* High z-index to be on top */
 }
 
 .spinner {
-    border: 8px solid #f3f3f3;
-    border-top: 8px solid #3498db;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 2s linear infinite;
+  border: 6px solid #e0e0e0; /* Light grey border */
+  border-top: 6px solid #3498db; /* Blue spinner */
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1.5s linear infinite; /* Smooth animation */
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* Main Container */
+/* --- Main Container --- */
 .container {
-    display: none; /* Initially hidden until loading is complete */
-    text-align: center;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: relative; /* For absolute positioning of child elements */
+  display: none;
+  max-width: 600px; /* Limit container width for better readability */
+  width: 100%; /* Responsive width */
+  background-color: #ffffff;
+  border-radius: 12px; /* Softer corners */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  padding: 30px;
+  text-align: center;
 }
 
-/* Header */
+/* --- Header --- */
 header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
 }
 
 #user-info {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px; /* Add margin for smaller screens */
 }
 
 #user-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 10px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  margin-right: 12px;
+  display: none;
 }
 
 #user-name {
-    font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
-#user-points {
-    margin-left: 10px;
-}
-
+#user-points,
 #game-level {
-    font-size: 1.2em;
+  font-size: 1rem;
+  color: #777; /* Lighter color for secondary info */
+  margin-left: 15px;
 }
 
-/* Image Container */
+/* --- Image Container --- */
 #image-container {
-    margin-bottom: 20px;
-    position: relative; /* For hint overlay */
+  margin-bottom: 25px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px; /* Match container */
 }
 
 #image-container img {
-    max-width: 200px;
-    max-height: 200px;
-    border-radius: 10px;
+  max-width: 100%;
+  height: auto; /* Maintain aspect ratio */
+  border-radius: 12px;
+  display: block; /* Remove extra space below image */
 }
 
-/* Hints */
-#hint-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 10px;
+.blur {
+  filter: blur(10px); /* Adjust blur intensity */
+  transition: filter 0.5s ease;
 }
 
-.hint-button {
-    padding: 8px 16px;
-    margin: 0 5px;
-    background-color: #f9aa33;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.hint-button:hover {
-    background-color: #e69500;
-}
-
-/* Word and Guesses */
+/* --- Word and Guesses --- */
 #word-container {
-    font-size: 2em;
-    letter-spacing: 0.2em;
-    margin-bottom: 20px;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.3rem;
+  margin-bottom: 20px;
+  word-wrap: break-word; /* Prevent overflow */
 }
 
-#guesses-container {
-    margin-bottom: 20px;
+#guesses-left {
+  font-size: 1.2rem;
+  color: #777;
+  margin-bottom: 25px;
 }
 
-/* Input */
+/* --- Input --- */
 #input-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 25px;
 }
 
 #letter-input {
-    width: 50px;
-    padding: 10px;
-    font-size: 1.2em;
-    text-align: center;
-    margin-right: 10px;
+  width: 60px;
+  height: 50px; /* Make input taller */
+  font-size: 1.8rem;
+  text-align: center;
+  border: 2px solid #ced4da; /* Neutral border */
+  border-radius: 8px;
+  margin-right: 10px;
+  padding: 5px;
+  outline: none; /* Remove default focus outline */
+}
+
+#letter-input:focus {
+  border-color: #80bdff; /* Highlight on focus */
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Add focus effect */
 }
 
 #guess-button {
-    padding: 10px 20px;
-    font-size: 1.2em;
-    cursor: pointer;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
+  background-color: #007bff; /* Primary blue */
+  color: #fff;
+  border: none;
+  padding: 12px 25px;
+  font-size: 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 #guess-button:hover {
-    background-color: #367c39;
+  background-color: #0069d9; /* Darker blue on hover */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Add hover shadow */
 }
 
-/* Power-ups */
+#guess-button:disabled {
+    background-color: #6c757d; /* Disabled state color */
+    cursor: default;
+}
+
+/* --- Messages --- */
+#message-container {
+  min-height: 2.5rem; /* Reserve space for messages */
+  margin-bottom: 25px;
+  font-size: 1.1rem;
+  color: #dc3545; /* Red for errors */
+}
+
+/* --- Game Controls --- */
+.game-controls {
+  margin-top: 25px;
+}
+
+.game-controls button {
+  background-color: #343a40; /* Dark grey */
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0 5px;
+  transition: background-color 0.3s ease;
+}
+
+.game-controls button:hover {
+  background-color: #23272b; /* Lighter grey on hover */
+}
+
+/* --- Hints --- */
+#hint-container {
+    display: flex;
+    justify-content: center;
+    align-items: center; /* Center the hint buttons */
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.hint-button {
+    background-color: #6f42c1; /* Soft purple */
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 5px; /* Add margin for spacing */
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hint-button:hover {
+    background-color: #5a319e; /* Darker purple on hover */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+/* --- Power-ups --- */
 #power-up-container {
     display: flex;
     justify-content: center;
-    margin-bottom: 20px;
+    align-items: center; /* Center the power-up buttons */
+    margin-bottom: 25px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
 }
 
 .power-up-button {
-    padding: 8px 16px;
-    margin: 0 5px;
-    background-color: #1e90ff;
-    color: white;
+    background-color: #ffc107; /* Yellow */
+    color: #212529; /* Dark text for contrast */
     border: none;
-    border-radius: 5px;
+    padding: 8px 16px;
+    font-size: 1rem;
+    border-radius: 8px;
     cursor: pointer;
+    margin: 5px; /* Add margin for spacing */
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    animation: pulse 2s infinite; /* Add a subtle pulse effect */
 }
 
 .power-up-button:hover {
-    background-color: #0077e6;
+    background-color: #e0a800; /* Darker yellow on hover */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
-/* Messages */
-#message-container {
-    height: 2em; /* Fixed height for messages */
-    margin-bottom: 20px;
-    color: red;
-    font-size: 1.2em;
+/* Pulse Animation */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
-/* Game Controls */
-.game-controls {
-    margin-top: 20px;
-}
-
-#new-game-button,
-#sound-toggle-button {
-    padding: 10px 20px;
-    font-size: 1.2em;
-    cursor: pointer;
-    background-color: #7289da;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    margin: 0 5px;
-}
-
-#new-game-button:hover,
-#sound-toggle-button:hover {
-    background-color: #5865f2;
-}
-
-/* Game Log */
+/* --- Game Log --- */
 #game-log {
-    margin-top: 30px;
-    border-top: 1px solid #ccc;
-    padding-top: 20px;
+  margin-top: 30px;
+  border-top: 2px solid #dee2e6; /* Lighter border */
+  padding-top: 20px;
 }
 
 #log-list {
-    list-style: none;
-    padding: 0;
-    text-align: left;
+  list-style: none;
+  padding: 0;
 }
 
 #log-list li {
-    margin-bottom: 5px;
+  font-size: 0.9rem;
+  color: #666; /* Lighter text color */
+  margin-bottom: 8px;
+  line-height: 1.4; /* Improve readability */
 }
 
-/* Footer */
+/* --- Footer --- */
 footer {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    text-align: center;
+  margin-top: 30px;
+  text-align: center;
 }
 
 #leaderboard-button {
-    padding: 8px 16px;
-    background-color: #ff4500;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+  background-color: #28a745; /* Green */
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
 #leaderboard-button:hover {
-    background-color: #d43c00;
+  background-color: #218838; /* Darker green on hover */
 }
 
-/* Animations */
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-20px);
-    }
-    60% {
-        transform: translateY(-10px);
-    }
-}
-
-.bounce {
-    animation: bounce 1s ease;
+/* --- Animations --- */
+.fade-in {
+  animation: fade-in 0.5s ease forwards; /* Add 'forwards' to keep end state */
 }
 
 @keyframes fade-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.fade-in {
-    animation: fade-in 0.5s ease;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
+  from {
+    opacity: 0;
   }
-  50% {
-    transform: scale(1.2);
+  to {
     opacity: 1;
   }
-  100% {
-    transform: scale(1);
-    opacity: 0.8;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 500px) {
+  .container {
+    padding: 20px; /* Reduce padding on small screens */
+  }
+
+  #word-container {
+    font-size: 2rem; /* Reduce font size */
+  }
+
+  #letter-input {
+    width: 45px;
+    height: 40px; /* Adjust input size */
+    font-size: 1.4rem;
+  }
+
+  .hint-button,
+  .power-up-button {
+    padding: 6px 12px; /* Reduce button padding */
+    font-size: 0.9rem;
   }
 }
 
-/* Apply the pulse animation to power-up buttons */
-.power-up-button {
-  animation: pulse 2s infinite;
+/* in your style.css, you can add specific styling for the guest button */
+#play-as-guest-button {
+  margin-left: 10px; /* Add some space between the Google button and the guest button */
+  /* Add more styles as needed */
 }
