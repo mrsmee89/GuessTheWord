@@ -70,7 +70,11 @@ async function verifyGoogleToken(token) {
         throw new Error("Invalid Google token");
     }
 }
-
+app.get('/api/config', (req, res) => {
+    res.json({
+        googleClientId: process.env.GOOGLE_CLIENT_ID,
+    });
+});
 // --- Middleware ---
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
@@ -241,7 +245,7 @@ io.on("connection", (socket) => {
         console.log("User connected:", userId);
         // You can store the userId and socket.id in a map or database to keep track of connected users
     });
-    
+
     socket.on("guess", (data) => {
         // Broadcast the guess to all other connected clients
         socket.broadcast.emit("guess-broadcast", data);

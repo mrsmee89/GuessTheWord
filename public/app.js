@@ -465,7 +465,9 @@ async function initializeGoogleSignIn() {
     showLoadingScreen();
 
     // 1. Get the Google Client ID from the environment variable (on the server)
-    const googleClientId = "543669845972-alrhvbn3hr2etoqf1f61vd7oh0i6edre.apps.googleusercontent.com";
+    const configResponse = await fetch('/api/config');
+    const config = await configResponse.json();
+    googleClientId = config.googleClientId;
 
     // 2. Check if the Client ID is set
     if (!googleClientId) {
