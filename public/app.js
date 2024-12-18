@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
   const imageApiKey = "YOUR-UNSPLASH-API-KEY"; // Replace with your Unsplash API key
-  const googleClientId = "YOUR-GOOGLE-CLIENT-ID"; // Replace with your Google Client ID
+// Replace with your Google Client ID
 
   let selectedWord = "";
   let selectedWordDefinition = "";
@@ -422,28 +422,50 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- Google Sign-In and Guest Mode ---
-  function initializeGoogleSignIn() {
+async function initializeGoogleSignIn() {
     showLoadingScreen();
 
+    // 1. Fetch the Google Client ID from the server
+    let googleClientId;
+    try {
+        const configResponse = await fetch('/api/config');
+        const config = await configResponse.json();
+        googleClientId = config.googleClientId;
+    } catch (error) {
+        console.error("Error fetching Google Client ID:", error);
+        messageContainer.textContent = "Error: Could not load Google Sign-In configuration.";
+        initializeGuestUser(); // Fallback to guest mode
+        hideLoadingScreen();
+        return; // Stop further execution
+    }
+
+    // 2. Check if Google API is loaded
     if (typeof google !== "undefined") {
-      google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: handleCredentialResponse,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById("buttonDiv"),
-        { theme: "outline", size: "large" }
-      );
-      google.accounts.id.prompt();
+        // 3. Initialize Google Sign-In
+        try {
+        google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: handleCredentialResponse,
+        });
+        google.accounts.id.renderButton(
+            document.getElementById("buttonDiv"),
+            { theme: "outline", size: "large" }
+        );
+        google.accounts.id.prompt();
+        } catch (error) {
+        console.error("Error initializing Google Sign-In:", error);
+        messageContainer.textContent = "Error: Could not initialize Google Sign-In.";
+        initializeGuestUser(); // Fallback to guest mode
+        }
     } else {
-      console.error("Google API not loaded");
-      messageContainer.textContent =
+        console.error("Google API not loaded");
+        messageContainer.textContent =
         "Error: Google API not loaded. Sign in may not be available.";
-      initializeGuestUser();
+        initializeGuestUser(); // Fallback to guest mode
     }
 
     hideLoadingScreen();
-  }
+    }
 
   async function handleCredentialResponse(response) {
     try {
