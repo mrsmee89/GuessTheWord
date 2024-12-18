@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const wordLengthSelect = document.getElementById("word-length");
     const gameModeSelect = document.getElementById("game-mode");
     const shareButton = document.getElementById("share-button");
+    const logoutButton = document.getElementById("logout-button");
+    const authButtons = document.getElementById("auth-buttons");
 
     // --- Constants and Variables ---
     const wordApiUrl = "/api/word"; // Using server-side route
@@ -49,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let soundEnabled = true;
     let gameInProgress = false;
     let isGuestUser = false; // Flag to indicate guest user
+    let gameId = localStorage.getItem('currentGameId') || null; // Retrieve game ID from localStorage if available
 
     // --- Socket.IO ---
     const socket = io();
@@ -78,6 +81,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isGuestUser && data.userId !== userProfile.id) {
             const message = `${data.userName} guessed: ${data.letter}`;
             addLogEntry(message);
+        }
+    });
+
+    // Handle game state updates
+    socket.on("game-state-update", (data) => {
+        if (data.gameId === localStorage.getItem('currentGameId')) {
+            updateGameState(data);
+            // Store current game state
+            localStorage.setItem('currentGameState', JSON.stringify(data));
         }
     });
 
@@ -249,6 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 userId: userProfile.id,
                 userName: userProfile.name,
                 letter: letter,
+                gameId: gameId
             });
         }
     }
@@ -457,145 +470,123 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- Google Sign-In and Guest Mode ---
     async function initializeGoogleSignIn() {
-        showLoadingScreen();
-
-        // Fetch the Google Client ID from the server
-        let googleClientId;
         try {
-            const configResponse = await fetch("/api/config");
-            const config = await configResponse.json();
-            googleClientId = config.googleClientId;
-        } catch (error) {
-            console.error("Error fetching Google Client ID:", error);
-            messageContainer.textContent =
-                "Error: Could not load Google Sign-In configuration.";
-            initializeGuestUser(); // Fallback to guest mode
-            hideLoadingScreen();
-            return;
-        }
-
-        // Check if Google API is loaded (with a timeout)
-        let googleApiLoaded = false;
-        const googleApiTimeout = 5000; // 5 seconds timeout
-
-        const googleApiLoadedPromise = new Promise((resolve) => {
-            const checkGoogleApi = () => {
-                if (typeof google !== "undefined") {
-                    googleApiLoaded = true;
+            // Wait for Google API to load
+            await new Promise((resolve, reject) => {
+                if (typeof google !== 'undefined') {
                     resolve();
                 } else {
-                    setTimeout(checkGoogleApi, 100); // Check again after 100ms
+                    const checkGoogle = setInterval(() => {
+                        if (typeof google !== 'undefined') {
+                            clearInterval(checkGoogle);
+                            resolve();
+                        }
+                    }, 100);
+                    // Timeout after 5 seconds
+                    setTimeout(() => {
+                        clearInterval(checkGoogle);
+                        reject(new Error('Google API failed to load'));
+                    }, 5000);
                 }
-            };
-            checkGoogleApi();
-        });
-
-        // Wait for Google API to load or timeout
-        try {
-            await Promise.race([
-                googleApiLoadedPromise,
-                new Promise((_, reject) =>
-                    setTimeout(() => reject("Google API load timeout"), googleApiTimeout)
-                ),
-            ]);
-        } catch (error) {
-            console.error("Error loading Google API:", error);
-            messageContainer.textContent =
-                "Error: Google API not loaded. Sign in may not be available.";
-            initializeGuestUser(); // Fallback to guest mode
-            hideLoadingScreen();
-            return; // Stop if API load fails or times out
-        }
-
-        // Initialize Google Sign-In
-        try {
-            google.accounts.id.initialize({
-                client_id: googleClientId,
-                callback: handleCredentialResponse,
             });
+
+            const configResponse = await fetch("/api/config");
+            const config = await configResponse.json();
+            
+            google.accounts.id.initialize({
+                client_id: config.googleClientId,
+                callback: handleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: true
+            });
+
             google.accounts.id.renderButton(
                 document.getElementById("buttonDiv"), {
-                    theme: "outline",
-                    size: "large"
+                    theme: "filled_blue",
+                    size: "large",
+                    type: "standard",
+                    shape: "rectangular",
+                    text: "signin_with",
+                    logo_alignment: "left"
                 }
             );
-            google.accounts.id.prompt();
+
+            // Show/hide appropriate buttons based on session state
+            const token = getCookie("token");
+            if (!token) {
+                authButtons.style.display = "block";
+                signInContainer.style.display = "block";
+                logoutButton.style.display = "none";
+            } else {
+                checkExistingSession();
+            }
+
         } catch (error) {
             console.error("Error initializing Google Sign-In:", error);
-            messageContainer.textContent =
-                "Error: Could not initialize Google Sign-In.";
-            initializeGuestUser(); // Fallback to guest mode
+            // Don't auto-initialize guest user, just show the guest button
+            authButtons.style.display = "block";
+            signInContainer.style.display = "none";
+            playAsGuestButton.style.display = "block";
         }
+    }
 
-        hideLoadingScreen();
+    function updateUserProfile(userData) {
+        userProfile = {
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            avatar: userData.avatar
+        };
+
+        // Update UI
+        userName.textContent = userProfile.name;
+        userAvatar.src = userProfile.avatar || generateGradientAvatar(userProfile.name);
+        userAvatar.style.display = "block";
+        signInContainer.style.display = "none";
+        playAsGuestButton.style.display = "none";
+        logoutButton.style.display = "block";
+        authButtons.style.display = "none";
     }
 
     async function handleCredentialResponse(response) {
         try {
-            const decoded = parseJwt(response.credential);
-            isGuestUser = false; // Reset guest user flag
-            userProfile = {
-                id: decoded.sub,
-                name: decoded.name,
-                email: decoded.email,
-                avatar: decoded.picture,
-            };
-
-            userName.textContent = userProfile.name;
-            userAvatar.src = userProfile.avatar;
-            userAvatar.style.display = "block";
-            signInContainer.style.display = "none";
-            playAsGuestButton.style.display = "none";
-
-            // Send credential to server for verification and user creation/update
+            // Send the credential to your server
             const serverResponse = await fetch("/auth/google", {
                 method: "POST",
+                credentials: 'include',
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    credential: response.credential
-                }),
+                body: JSON.stringify({ credential: response.credential })
             });
 
-            console.log("Server response status:", serverResponse.status); // Log status
-
             if (!serverResponse.ok) {
-                const errorText = await serverResponse.text(); // Get error text from server
-                console.error("Server error:", errorText);
-                throw new Error(`Server-side authentication failed: ${errorText}`);
+                throw new Error("Server authentication failed");
             }
 
-            const serverData = await serverResponse.json();
-            console.log("User data from server:", serverData);
+            const userData = await serverResponse.json();
+            
+            // Update user profile
+            updateUserProfile(userData);
 
-            // Use the data returned from the server to update the UI
-            userPoints = serverData.points;
-            gameLevel = serverData.level;
+            // Show points and level
+            userPoints = userData.points || 0;
+            gameLevel = userData.level || 1;
             updateDisplay();
 
-            if (serverData.gameHistory) {
-                serverData.gameHistory.forEach((entry) => {
-                    addLogEntry(
-                        `${entry.won ? "Won" : "Lost"} with "${
-              entry.word
-            }" on ${new Date(entry.timestamp).toLocaleString()}`
-                    );
-                });
-            }
-
-            // Notify the server that the user has connected
+            // Connect to socket
             socket.emit("user-connected", userProfile.id);
 
-            // Initialize the game after sign-in and data fetch
+            // Start game
             initializeGame();
         } catch (error) {
             console.error("Error during Google Sign-In:", error);
             messageContainer.textContent = "Error: Could not sign in with Google.";
+            initializeGuestUser();
         }
     }
 
-    function initializeGuestUser() {
+    async function initializeGuestUser() {
         isGuestUser = true;
         userProfile = null; // No user profile for guests
         userName.textContent = "Guest";
@@ -720,72 +711,280 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- Event Listeners ---
-    newGameButton.addEventListener("click", initializeGame);
-    soundToggleButton.addEventListener("click", toggleSound);
-    imageHintButton.addEventListener("click", showImageHint);
-    definitionHintButton.addEventListener("click", showDefinitionHint);
-    letterHintButton.addEventListener("click", showLetterHint);
-    extraGuessButton.addEventListener("click", useExtraGuess);
-    skipWordButton.addEventListener("click", useSkipWord);
-    fiftyFiftyButton.addEventListener("click", useFiftyFifty);
-    guessButton.addEventListener("click", checkGuess);
-    leaderboardButton.addEventListener("click", () => {
-        alert("Leaderboard functionality coming soon!");
-    });
-    playAsGuestButton.addEventListener("click", initializeGuestUser);
-    // Add event listener for game mode selection
-    gameModeSelect.addEventListener("change", handleGameModeChange);
+    // --- Multiplayer Game Creation ---
+    async function createMultiplayerGame() {
+        try {
+            if (!userProfile) {
+                messageContainer.textContent = "Please sign in to play multiplayer";
+                return;
+            }
 
-    // Add event listener for word length selection
-    wordLengthSelect.addEventListener("change", initializeGame);
+            const response = await fetch("/api/game/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    userId: userProfile.id,
+                    wordLength: wordLengthSelect.value,
+                    gameMode: "multiplayer",
+                }),
+                credentials: 'include' // Important for cookies
+            });
 
-    // Function to handle game mode change
+            if (!response.ok) {
+                throw new Error("Failed to create game");
+            }
+
+            const data = await response.json();
+            gameId = data.gameId; // Set the game ID globally
+            localStorage.setItem('currentGameId', gameId); // Store game ID in localStorage
+            
+            const gameUrl = `${window.location.origin}/game/${gameId}`;
+            await navigator.clipboard.writeText(gameUrl);
+            messageContainer.textContent = "Game link copied to clipboard! Share it with your friends.";
+            
+            // Update UI to show waiting state
+            updateGameState({
+                gameState: 'waiting',
+                players: [userProfile.id],
+                guessesLeft: 6,
+                displayedWord: '',
+                guessedLetters: []
+            });
+
+            // Join the game room
+            socket.emit('join-game', { gameId, userId: userProfile.id });
+        } catch (error) {
+            console.error("Error creating multiplayer game:", error);
+            messageContainer.textContent = "Error creating multiplayer game.";
+        }
+    }
+
+    // --- Join Multiplayer Game ---
+    async function joinGame(gameId) {
+        try {
+            const response = await fetch("/api/game/join", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    gameId,
+                    userId: userProfile.id,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to join game");
+            }
+
+            socket.emit("join-game", { gameId, userId: userProfile.id });
+        } catch (error) {
+            console.error("Error joining game:", error);
+            messageContainer.textContent = "Error joining game.";
+        }
+    }
+
+    // --- Handle Game Mode Change ---
     function handleGameModeChange() {
         const selectedMode = gameModeSelect.value;
         if (selectedMode === "multiplayer") {
-            // Implement logic to start a new multiplayer game
-            // This might involve setting up a new room or session on the server
-            // and connecting multiple players to the same game instance
-            console.log("Multiplayer mode selected - functionality to be implemented");
+            createMultiplayerGame();
         } else {
             initializeGame();
         }
     }
 
+    // --- Game State Update ---
+    function updateGameState(data) {
+        if (data.word) selectedWord = data.word;
+        if (data.displayedWord) displayedWord = data.displayedWord;
+        if (data.guessedLetters) guessedLetters = data.guessedLetters;
+        if (data.guessesLeft) guessesLeft = data.guessesLeft;
+        gameInProgress = data.gameState === "in-progress";
+        
+        // Update UI
+        updateDisplay();
+        
+        // Show whose turn it is
+        if (data.turn) {
+            const isMyTurn = data.turn === userProfile?.id;
+            messageContainer.textContent = isMyTurn ? 
+                "It's your turn!" : 
+                "Waiting for other player...";
+            enableGameControls(isMyTurn);
+        }
+    }
+
     // --- Share Game Functionality ---
     function shareGame() {
-        if (!navigator.share) {
-            alert("Your browser does not support the Web Share API.");
+        if (!gameId && gameModeSelect.value === 'multiplayer') {
+            messageContainer.textContent = "Please create or join a game first";
             return;
         }
 
-        const gameUrl = window.location.href;
+        const gameUrl =
+            gameId ? `${window.location.origin}/game/${gameId}` : window.location.origin;
+        
+        const shareText = `Join me in playing Word Wizard! ${gameUrl}`;
 
-        navigator
-            .share({
-                title: "Play Word Wizard - The Ultimate Word Guessing Game!",
-                text: "Join me in playing Word Wizard! Test your vocabulary and have fun guessing words.",
+        if (navigator.share) {
+            navigator.share({
+                title: "Word Wizard - The Ultimate Word Guessing Game!",
+                text: shareText,
                 url: gameUrl,
-            })
-            .then(() => console.log("Successful share"))
-            .catch((error) => console.log("Error sharing:", error));
+            }).catch(error => console.error("Error sharing:", error));
+        } else {
+            navigator.clipboard.writeText(shareText)
+                .then(() => messageContainer.textContent = "Game link copied to clipboard!")
+                .catch(error => console.error("Error copying:", error));
+        }
     }
-    // Event listener for the share button
-    shareButton.addEventListener("click", shareGame);
 
     // --- Helper function to get cookie value by name ---
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-        return parts.pop().split(';').shift();
-    } else {
-        console.error(`Cookie ${name} not found`);
-        return null; // Return null if the cookie is not found
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) {
+            const cookieValue = parts.pop().split(';').shift();
+            return cookieValue || null;
+        }
+        return null;
     }
-}
+
+    // --- Add logout function ---
+    async function logout() {
+        try {
+            // Clear server-side session
+            await fetch('/auth/logout', { 
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            // Clear client-side data
+            userProfile = null;
+            localStorage.removeItem('currentGameId');
+            document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            
+            // Reset UI
+            userAvatar.style.display = "none";
+            userName.textContent = "";
+            userPointsSpan.textContent = "0 Points";
+            logoutButton.style.display = "none";
+            authButtons.style.display = "block";
+            signInContainer.style.display = "block";
+            
+            // Reinitialize Google Sign-In
+            initializeGoogleSignIn();
+            
+            // Redirect to home or show guest interface
+            initializeGuestUser();
+        } catch (error) {
+            console.error("Error during logout:", error);
+            messageContainer.textContent = "Error logging out";
+        }
+    }
 
     // --- Initialize Google Sign-In ---
     initializeGoogleSignIn();
+
+    // --- Add session recovery on page load ---
+    async function checkExistingSession() {
+        try {
+            // First check for existing token
+            const token = getCookie("token");
+            const savedGameId = localStorage.getItem('currentGameId');
+
+            // If no token, try to initialize as guest
+            if (!token) {
+                console.log("No token found, showing auth options");
+                hideLoadingScreen();
+                showAuthOptions();
+                return;
+            }
+
+            console.log("Checking session with token:", token);
+            
+            // Verify token with server
+            const response = await fetch('/api/check-session', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Session check failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log("Session data:", data);
+
+            if (data.isAuthenticated) {
+                userProfile = {
+                    id: data.userId,
+                    name: data.name,
+                    email: data.email,
+                    avatar: data.picture
+                };
+                
+                // Update UI for authenticated user
+                updateAuthenticatedUI();
+
+                // Handle existing game if any
+                if (savedGameId) {
+                    gameId = savedGameId;
+                    await joinGame(gameId);
+                } else {
+                    initializeGame();
+                }
+            } else {
+                throw new Error('Session not authenticated');
+            }
+        } catch (error) {
+            console.log("Session check failed:", error);
+            clearSessionData();
+            hideLoadingScreen();
+            showAuthOptions();
+        }
+    }
+
+    // Add helper functions for UI states
+    function showAuthOptions() {
+        authButtons.style.display = "block";
+        signInContainer.style.display = "block";
+        playAsGuestButton.style.display = "block";
+        logoutButton.style.display = "none";
+        userAvatar.style.display = "none";
+        userName.textContent = "";
+        userPointsSpan.textContent = "0 Points";
+    }
+
+    function updateAuthenticatedUI() {
+        userName.textContent = userProfile.name;
+        userAvatar.src = userProfile.avatar || generateGradientAvatar(userProfile.name);
+        userAvatar.style.display = "block";
+        signInContainer.style.display = "none";
+        playAsGuestButton.style.display = "none";
+        logoutButton.style.display = "block";
+        authButtons.style.display = "none";
+    }
+
+    function clearSessionData() {
+        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        localStorage.removeItem('currentGameId');
+        userProfile = null;
+    }
+
+    // --- Check for Existing Session ---
+    checkExistingSession();
+
+    // --- Update event listeners ---
+    logoutButton.addEventListener("click", logout);
+    gameModeSelect.addEventListener("change", handleGameModeChange);
+    newGameButton.addEventListener("click", initializeGame);
+    shareButton.addEventListener("click", shareGame);
 });

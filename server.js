@@ -4,9 +4,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 const mongoose = require("mongoose");
 const path = require("path");
-const {
-    OAuth2Client
-} = require("google-auth-library");
+const { OAuth2Client } = require("google-auth-library");
 const session = require("express-session");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
@@ -58,11 +56,12 @@ app.use(
     session({
         secret: process.env.SESSION_SECRET,
         resave: false,
-        saveUninitialized: true,
+        saveUninitialized: false,
         cookie: {
             secure: process.env.NODE_ENV === "production",
             maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
             httpOnly: true,
+            sameSite: "strict",
         },
         store: store,
     })
@@ -73,67 +72,101 @@ app.use(
 // --- Authentication Route ---
 app.post("/auth/google", async (req, res) => {
     try {
-        const {
-            credential
-        } = req.body;
+        const { credential } = req.body;
         const payload = await verifyGoogleToken(credential);
 
-        let user = await User.findOne({
-            googleId: payload.sub
-        });
+        if (!payload) {
+            throw new Error("Invalid token");
+        }
+
+        let user = await User.findOne({ googleId: payload.sub });
+        
         if (!user) {
+            // Create new user
             user = new User({
                 googleId: payload.sub,
                 name: payload.name,
                 email: payload.email,
                 avatar: payload.picture,
-                gameHistory: [], // Initialize gameHistory
+                points: 0,
+                level: 1,
+                gameHistory: []
             });
-            console.log("new user created");
-        } else {
-            // Update user data if it has changed in the Google account
-            user.name = payload.name;
-            user.email = payload.email;
-            user.avatar = payload.picture;
-            console.log("user info updated");
         }
+
+        // Update existing user data
+        user.name = payload.name;
+        user.email = payload.email;
+        user.avatar = payload.picture;
+
         await user.save();
 
-        // Create JWT token
+        // Create JWT token with all necessary user data
         const token = jwt.sign({
-                userId: user.googleId
-            },
-            process.env.JWT_SECRET, {
-                expiresIn: "7d", // Token expires in 7 days (adjust as needed)
-            }
-        );
-
-        // Set JWT token in HTTP-only cookie
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Secure in production
-            maxAge: 1000 * 60 * 60 * 24 * 7, // Same as the token expiration
+            userId: user.googleId,
+            name: user.name,
+            email: user.email,
+            picture: user.avatar
+        }, process.env.JWT_SECRET, {
+            expiresIn: "7d"
         });
 
+        // Set session
+        req.session.userId = user.googleId;
+        
+        // Set JWT cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        // Send user data back to client
         res.json({
             id: user.googleId,
             name: user.name,
             email: user.email,
             avatar: user.avatar,
             points: user.points,
-            level: user.level,
+            level: user.level
         });
+
     } catch (error) {
         console.error("Authentication error:", error);
-        res.status(401).send("Authentication failed");
+        res.status(401).send(error.message);
     }
 });
 
+// Add session check middleware
+const checkAuth = (req, res, next) => {
+    const token = req.cookies.token;
+    if (!token && !req.session.userId) {
+        return res.status(401).send("Unauthorized");
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (error) {
+        if (req.session.userId) {
+            next();
+        } else {
+            res.status(401).send("Invalid token");
+        }
+    }
+};
+
+// Apply auth middleware to protected routes
+app.use(["/api/user", "/api/game"], checkAuth);
+
 // --- Configuration Route ---
 app.get("/api/config", (req, res) => {
-    res.json({
-        googleClientId: process.env.GOOGLE_CLIENT_ID,
-    });
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+        return res.status(500).json({ error: "Google Client ID not configured" });
+    }
+    res.json({ googleClientId: clientId });
 });
 
 // --- Protected Route Example (with JWT verification) ---
@@ -178,9 +211,7 @@ app.get("/api/user/:userId", async (req, res) => {
             return res.status(403).send("Forbidden: You can only access your own data");
         }
 
-        const user = await User.findOne({
-            googleId: req.params.userId
-        });
+        const user = await User.findOne({ googleId: req.params.userId });
         if (!user) {
             return res.status(404).send("User not found");
         }
@@ -206,15 +237,8 @@ app.get("/api/user/:userId", async (req, res) => {
 // POST /api/user - Create a new user
 app.post("/api/user", async (req, res) => {
     try {
-        const {
-            googleId,
-            name,
-            email,
-            avatar
-        } = req.body;
-        let user = await User.findOne({
-            googleId
-        });
+        const { googleId, name, email, avatar } = req.body;
+        let user = await User.findOne({ googleId });
         if (user) {
             return res.status(400).json({
                 message: "User already exists"
@@ -240,15 +264,8 @@ app.post("/api/user", async (req, res) => {
 // POST /api/user/:userId/update-score - Update user score and game history
 app.post("/api/user/:userId/update-score", async (req, res) => {
     try {
-        const {
-            points,
-            level,
-            word,
-            won
-        } = req.body;
-        const user = await User.findOne({
-            googleId: req.params.userId
-        });
+        const { points, level, word, won } = req.body;
+        const user = await User.findOne({ googleId: req.params.userId });
         if (!user) {
             return res.status(404).send("User not found");
         }
@@ -303,7 +320,7 @@ async function fetchWordDefinition(word) {
         const response = await fetch(`${definitionApiUrl}${word}`);
         const data = await response.json();
 
-        if (data[0] ?.meanings[0] ?.definitions[0] ?.definition) {
+        if (data[0]?.meanings[0]?.definitions[0]?.definition) {
             return data[0].meanings[0].definitions[0].definition;
         } else {
             return "Definition not found.";
@@ -338,22 +355,17 @@ function generateGameId() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+// --- Create Multiplayer Game Route ---
 app.post("/api/game/create", async (req, res) => {
     try {
-        const {
-            userId,
-            wordLength,
-            gameMode
-        } = req.body;
-
-        // Validate request data (ensure userId is present, wordLength is a number, etc.)
+        const { userId, wordLength, gameMode } = req.body;
 
         const gameId = generateGameId();
         const newGame = new Game({
             _id: gameId,
-            players: [userId], // Initially, the creator is the only player
+            players: [userId],
             wordLength,
-            gameState: "waiting", // Initial game state
+            gameState: "waiting",
         });
 
         await newGame.save();
@@ -363,15 +375,40 @@ app.post("/api/game/create", async (req, res) => {
             wordLength,
             guessedLetters: [],
             guessesLeft: 6,
-            turn: userId, // Initially, the creator's turn
+            turn: userId,
             gameState: "waiting",
         };
 
-        res.status(201).json({
-            gameId
-        });
+        res.status(201).json({ gameId });
     } catch (error) {
         console.error("Error creating game:", error);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
+// --- Join Multiplayer Game Route ---
+app.post("/api/game/join", async (req, res) => {
+    try {
+        const { gameId, userId } = req.body;
+
+        const game = await Game.findById(gameId);
+        if (!game) {
+            return res.status(404).send("Game not found");
+        }
+
+        if (game.gameState !== "waiting") {
+            return res.status(400).send("Game is not joinable");
+        }
+
+        if (!game.players.includes(userId)) {
+            game.players.push(userId);
+            await game.save();
+        }
+
+        activeGames[gameId].players.push(userId);
+        res.status(200).send("Joined game successfully");
+    } catch (error) {
+        console.error("Error joining game:", error);
         res.status(500).send("Internal Server Error");
     }
 });
@@ -408,10 +445,7 @@ io.on("connection", (socket) => {
         }
     });
 
-    socket.on("join-game", async ({
-        gameId,
-        userId
-    }) => {
+    socket.on("join-game", async ({ gameId, userId }) => {
         try {
             // Check if the game exists and is active
             const game = await Game.findById(gameId);
@@ -434,19 +468,14 @@ io.on("connection", (socket) => {
             socket.join(gameId);
 
             // Emit an event to all users in the game that a new user has joined
-            io.to(gameId).emit("user-joined", {
-                userId,
-                gameId
-            });
+            io.to(gameId).emit("user-joined", { userId, gameId });
         } catch (error) {
             console.error("Error joining game:", error);
             socket.emit("game-error", "Error joining game");
         }
     });
 
-    socket.on("start-game", async ({
-        gameId
-    }) => {
+    socket.on("start-game", async ({ gameId }) => {
         try {
             // Find the game in the database and check if it exists
             const game = await Game.findById(gameId);
@@ -468,8 +497,8 @@ io.on("connection", (socket) => {
             activeGames[gameId].word = wordData.word.toLowerCase();
             activeGames[gameId].definition = wordData.definition;
             activeGames[gameId].displayedWord = Array(
-                    activeGames[gameId].word.length
-                )
+                activeGames[gameId].word.length
+            )
                 .fill("_")
                 .join("");
             activeGames[gameId].guessedLetters = [];
@@ -499,11 +528,7 @@ io.on("connection", (socket) => {
 
     socket.on("guess", async (data) => {
         console.log("Received guess:", data);
-        const {
-            userId,
-            gameId,
-            letter
-        } = data;
+        const { userId, gameId, letter } = data;
 
         // Validate the game id and user
         if (!activeGames[gameId] || !activeGames[gameId].players.includes(userId)) {
@@ -658,6 +683,67 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Add logout route
+app.post('/auth/logout', (req, res) => {
+    // Clear session
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ message: 'Logout failed' });
+        }
+        
+        // Clear cookie
+        res.clearCookie('token');
+        res.status(200).json({ message: 'Logged out successfully' });
+    });
+});
+
+// Update session check endpoint
+app.get('/api/check-session', (req, res) => {
+    try {
+        // Get token from cookie or Authorization header
+        const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+        
+        console.log("Checking session with token:", token);
+        
+        if (!token) {
+            console.log("No token found");
+            return res.status(401).json({ 
+                isAuthenticated: false,
+                message: "No token provided"
+            });
+        }
+        
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Set or refresh the session
+        req.session.userId = decoded.userId;
+        
+        // Refresh the cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+        
+        res.json({
+            isAuthenticated: true,
+            userId: decoded.userId,
+            name: decoded.name,
+            email: decoded.email,
+            picture: decoded.picture
+        });
+    } catch (error) {
+        console.error("Session verification error:", error);
+        res.clearCookie('token', { path: '/' });
+        res.status(401).json({ 
+            isAuthenticated: false,
+            message: error.message 
+        });
+    }
 });
 
 // --- Start the Server ---

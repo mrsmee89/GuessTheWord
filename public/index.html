@@ -6,7 +6,6 @@
     <title>Word Wizard - The Ultimate Word Guessing Game!</title>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
@@ -21,8 +20,11 @@
     <div class="container" style="display: none;">
         <header>
             <div id="user-info">
-                <div id="buttonDiv"></div>
-                <button id="play-as-guest-button">Play as Guest</button>
+                <div id="auth-buttons">
+                    <div id="buttonDiv"></div>
+                    <button id="play-as-guest-button">Play as Guest</button>
+                    <button id="logout-button" style="display: none;">Logout</button>
+                </div>
                 <img id="user-avatar" src="default-avatar.png" alt="Avatar">
                 <span id="user-name"></span>
                 <span id="user-points">0 Points</span>
@@ -31,65 +33,62 @@
         </header>
 
         <main>
-          <div id="settings-container">
-            <label for="word-length">Word Length:</label>
-            <select id="word-length">
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option> </select
-            ><br />
-            <label for="game-mode">Game Mode:</label>
-            <select id="game-mode">
-              <option value="single">Single Player</option>
-              <option value="multi">Multiplayer</option>
-            </select>
-          </div>
-          <div id="image-container"></div>
-          <div id="hint-container">
-            <button class="hint-button" id="image-hint-button">Image Hint</button>
-            <button class="hint-button" id="definition-hint-button">Definition Hint</button>
-            <button class="hint-button" id="letter-hint-button">Letter Hint</button>
-          </div>
-          <div id="word-container"></div>
-          <div id="guesses-container">
-            Guesses left: <span id="guesses-left"></span>
-          </div>
-  
-          <div id="input-container">
-            <input
-              type="text"
-              id="letter-input"
-              maxlength="1"
-              placeholder="Enter a letter"
-            />
-            <button id="guess-button">Guess</button>
-          </div>
-  
-          <div id="power-up-container">
-            <button class="power-up-button" id="extra-guess-button">Extra Guess</button>
-            <button class="power-up-button" id="skip-word-button">Skip Word</button>
-            <button class="power-up-button" id="fifty-fifty-button">50/50</button>
-          </div>
-  
-          <div id="message-container"></div>
-  
-          <div class="game-controls">
-            <button id="new-game-button">New Game</button>
-            <button id="sound-toggle-button">Toggle Sound</button>
-          </div>
-  
-          <div id="game-log">
-            <h3>Game Log</h3>
-            <ul id="log-list"></ul>
-          </div>
-        </main>
-  
-        <footer>
-          <button id="leaderboard-button">Leaderboard</button>
-          <button id="share-button">Share Game</button>
-        </footer>
-      </div>
+            <div id="settings-container">
+                <label for="word-length">Word Length:</label>
+                <select id="word-length">
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                </select>
+                <label for="game-mode">Game Mode:</label>
+                <select id="game-mode">
+                    <option value="single">Single Player</option>
+                    <option value="multi">Multiplayer</option>
+                </select>
+            </div>
+            <div id="image-container"></div>
+            <div id="hint-container">
+                <button class="hint-button" id="image-hint-button">Image Hint</button>
+                <button class="hint-button" id="definition-hint-button">Definition Hint</button>
+                <button class="hint-button" id="letter-hint-button">Letter Hint</button>
+            </div>
+            <div id="word-container"></div>
+            <div id="guesses-container">
+                Guesses left: <span id="guesses-left"></span>
+            </div>
 
+            <div id="input-container">
+                <input type="text" id="letter-input" maxlength="1" placeholder="Enter a letter">
+                <button id="guess-button">Guess</button>
+                <input type="hidden" id="game-id" value="">
+            </div>
+
+            <div id="power-up-container">
+                <button class="power-up-button" id="extra-guess-button">Extra Guess</button>
+                <button class="power-up-button" id="skip-word-button">Skip Word</button>
+                <button class="power-up-button" id="fifty-fifty-button">50/50</button>
+            </div>
+
+            <div id="message-container"></div>
+
+            <div class="game-controls">
+                <button id="new-game-button">New Game</button>
+                <button id="sound-toggle-button">Toggle Sound</button>
+            </div>
+
+            <div id="game-log">
+                <h3>Game Log</h3>
+                <ul id="log-list"></ul>
+            </div>
+        </main>
+
+        <footer>
+            <button id="leaderboard-button">Leaderboard</button>
+            <button id="share-button">Share Game</button>
+        </footer>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client"></script>
     <script src="app.js"></script>
 </body>
 </html>

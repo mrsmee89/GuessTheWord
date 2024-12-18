@@ -18,10 +18,31 @@ const gameSchema = new mongoose.Schema({
         enum: ["waiting", "in-progress", "completed"],
         default: "waiting",
     },
+    currentWord: {
+        type: String,
+        default: null
+    },
+    currentTurn: {
+        type: String,
+        ref: "User"
+    },
+    guessedLetters: [{
+        type: String
+    }],
+    guessesLeft: {
+        type: Number,
+        default: 6
+    },
+    winner: {
+        type: String,
+        ref: "User",
+        default: null
+    },
     createdAt: {
         type: Date,
-        default: Date.now
-    },
+        default: Date.now,
+        expires: 86400 // Automatically delete after 24 hours
+    }
 });
 
 const Game = mongoose.model("Game", gameSchema);
