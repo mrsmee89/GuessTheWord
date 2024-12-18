@@ -523,36 +523,54 @@ document.addEventListener("DOMContentLoaded", () => {
         hideLoadingScreen();
     }
 
-    async function handleCredentialResponse(response) {
-        try {
-            const decoded = parseJwt(response.credential);
-            isGuestUser = false; // Reset guest user flag
-            userProfile = {
-                id: decoded.sub,
-                name: decoded.name,
-                email: decoded.email,
-                avatar: decoded.picture,
-            };
+async function handleCredentialResponse(response) {
+    try {
+        const decoded = parseJwt(response.credential);
+        isGuestUser = false; // Reset guest user flag
+        userProfile = {
+            id: decoded.sub,
+            name: decoded.name,
+            email: decoded.email,
+            avatar: decoded.picture,
+        };
 
-            userName.textContent = userProfile.name;
-            userAvatar.src = userProfile.avatar;
-            userAvatar.style.display = "block";
-            signInContainer.style.display = "none";
-            playAsGuestButton.style.display = "none";
+        userName.textContent = userProfile.name;
+        userAvatar.src = userProfile.avatar;
+        userAvatar.style.display = "block";
+        signInContainer.style.display = "none";
+        playAsGuestButton.style.display = "none";
 
-            // Fetch user data from server and update UI
-            await fetchUserData(userProfile.id);
+        // Send credential to server for verification and user creation/update
+        const serverResponse = await fetch("/auth/google", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                credential: response.credential
+            }),
+        });
 
-            // Notify the server that the user has connected
-            socket.emit("user-connected", userProfile.id);
-
-            // Initialize the game after sign-in and data fetch
-            initializeGame();
-        } catch (error) {
-            console.error("Error during Google Sign-In:", error);
-            messageContainer.textContent = "Error: Could not sign in with Google.";
+        if (!serverResponse.ok) {
+            throw new Error("Server-side authentication failed");
         }
+
+        const serverData = await serverResponse.json();
+
+        // Fetch user data from server and update UI
+        await fetchUserData(userProfile.id);
+
+        // Notify the server that the user has connected
+        socket.emit("user-connected", userProfile.id);
+
+        // Initialize the game after sign-in and data fetch
+        initializeGame();
+    } catch (error) {
+        console.error("Error during Google Sign-In:", error);
+        messageContainer.textContent =
+            "Error: Could not sign in with Google.";
     }
+}
 
     function initializeGuestUser() {
         isGuestUser = true;

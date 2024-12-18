@@ -88,6 +88,7 @@ app.post("/auth/google", async (req, res) => {
         let user = await User.findOne({
             googleId: payload.sub
         });
+        console.log(user);
         if (!user) {
             user = new User({
                 googleId: payload.sub,
