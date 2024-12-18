@@ -346,3 +346,7 @@ footer {
   margin-left: 10px; /* Add some space between the Google button and the guest button */
   /* Add more styles as needed */
 }
+#log-list .user-guess {
+    font-weight: bold;
+    color: blue; /* Or any color you prefer */
+}
