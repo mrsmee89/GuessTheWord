@@ -36,34 +36,34 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'))); // Serve from 'public'
 
 // Authentication Route
-app.post('/auth/google', async (req, res) => {
-    try {
-        const credential = req.body.credential;
+// app.post('/auth/google', async (req, res) => {
+//     try {
+//         const credential = req.body.credential;
 
-        // Verify the JWT
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const decoded = ticket.getPayload();
+//         // Verify the JWT
+//         const ticket = await client.verifyIdToken({
+//             idToken: credential,
+//             audience: process.env.GOOGLE_CLIENT_ID,
+//         });
+//         const decoded = ticket.getPayload();
 
-        let user = await User.findOne({ googleId: decoded.sub });
-        if (!user) {
-            user = new User({
-                googleId: decoded.sub,
-                name: decoded.name,
-                email: decoded.email,
-                avatar: decoded.picture
-            });
-        }
-        await user.save();
+//         let user = await User.findOne({ googleId: decoded.sub });
+//         if (!user) {
+//             user = new User({
+//                 googleId: decoded.sub,
+//                 name: decoded.name,
+//                 email: decoded.email,
+//                 avatar: decoded.picture
+//             });
+//         }
+//         await user.save();
 
-        res.json({ user });
-    } catch (error) {
-        console.error('Authentication error:', error);
-        res.status(500).send('Authentication failed');
-    }
-});
+//         res.json({ user });
+//     } catch (error) {
+//         console.error('Authentication error:', error);
+//         res.status(500).send('Authentication failed');
+//     }
+// });
 
 // Socket.IO
 io.on('connection', (socket) => {

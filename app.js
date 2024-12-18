@@ -349,10 +349,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Decode the JWT to get user information
         const decoded = parseJwt(response.credential); 
         userProfile = {
-            id: decoded.sub,
-            name: decoded.name,
-            email: decoded.email,
-            avatar: decoded.picture
+            id: 121213121,//decoded.sub,
+            name: "Levi",//decoded.name,
+            email: "a@a.com",//decoded.email,
+            avatar: ""//decoded.picture
         };
 
         // Update UI with user info
@@ -390,19 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Initialize Google Sign-In
-    window.onload = function () {
-        google.accounts.id.initialize({
-            client_id: googleClientId,
-            callback: handleCredentialResponse
-        });
-        google.accounts.id.renderButton(
-            document.getElementById("buttonDiv"),
-            { theme: "outline", size: "large" }
-        );
-        google.accounts.id.prompt();
+//     window.onload = function () {
+//         google.accounts.id.initialize({
+//             client_id: googleClientId,
+//             callback: handleCredentialResponse
+//         });
+//         google.accounts.id.renderButton(
+//             document.getElementById("buttonDiv"),
+//             { theme: "outline", size: "large" }
+//         );
+//         google.accounts.id.prompt();
 
-        // Hide game content initially
-        container.style.display = 'none';
-        loadingScreen.style.display = 'none';
-    };
-});
+//         // Hide game content initially
+//         container.style.display = 'none';
+//         loadingScreen.style.display = 'none';
+//     };
+// });
