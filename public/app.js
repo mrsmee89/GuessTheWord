@@ -625,15 +625,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Fetch User Data ---
     async function fetchUserData(userId) {
         try {
-            const response = await fetch(`/api/user/${userId}`, {
-                headers: {
-                    Authorization: `Bearer ${getCookie("token")}`, // Add token to request header
-                },
-            });
+            const response = await fetch(`/api/user/${userId}`);
             if (!response.ok) {
                 throw new Error("Failed to fetch user data");
             }
             const data = await response.json();
+
             userPoints = data.points;
             gameLevel = data.level;
             updateDisplay();
@@ -641,8 +638,8 @@ document.addEventListener("DOMContentLoaded", () => {
             data.gameHistory.forEach((entry) => {
                 addLogEntry(
                     `${entry.won ? "Won" : "Lost"} with "${
-            entry.word
-          }" on ${new Date(entry.timestamp).toLocaleString()}`
+          entry.word
+        }" on ${new Date(entry.timestamp).toLocaleString()}`
                 );
             });
             return data;

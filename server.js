@@ -166,25 +166,23 @@ app.get("/api/protected", (req, res) => {
 // GET /api/user/:userId - Get user data by Google ID
 app.get("/api/user/:userId", async (req, res) => {
     try {
-        // Check for JWT token in Authorization header
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).send('Unauthorized: Bearer token required');
+        const token = req.cookies.token; // Get token from cookie
+        if (!token) {
+            return res.status(401).send("Unauthorized: No token provided");
         }
 
-        const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
 
         // Check if the user making the request is the same as the one being requested
         if (decoded.userId !== req.params.userId) {
-            return res.status(403).send('Forbidden: You can only access your own data');
+            return res.status(403).send("Forbidden: You can only access your own data");
         }
 
         const user = await User.findOne({
             googleId: req.params.userId
         });
         if (!user) {
-            return res.status(404).send('User not found');
+            return res.status(404).send("User not found");
         }
 
         res.json({
@@ -197,11 +195,11 @@ app.get("/api/user/:userId", async (req, res) => {
             gameHistory: user.gameHistory,
         });
     } catch (error) {
-        console.error('Error fetching user data:', error);
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).send('Unauthorized: Invalid token');
+        console.error("Error fetching user data:", error);
+        if (error.name === "JsonWebTokenError") {
+            return res.status(401).send("Unauthorized: Invalid token");
         }
-        res.status(500).send('Internal Server Error');
+        res.status(500).send("Internal Server Error");
     }
 });
 
