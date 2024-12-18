@@ -30,44 +30,65 @@
             <div id="game-level">Level 1</div>
         </header>
 
-        <div id="image-container"></div>
-        <div id="hint-container">
+        <main>
+          <div id="settings-container">
+            <label for="word-length">Word Length:</label>
+            <select id="word-length">
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option> </select
+            ><br />
+            <label for="game-mode">Game Mode:</label>
+            <select id="game-mode">
+              <option value="single">Single Player</option>
+              <option value="multi">Multiplayer</option>
+            </select>
+          </div>
+          <div id="image-container"></div>
+          <div id="hint-container">
             <button class="hint-button" id="image-hint-button">Image Hint</button>
             <button class="hint-button" id="definition-hint-button">Definition Hint</button>
             <button class="hint-button" id="letter-hint-button">Letter Hint</button>
-        </div>
-        <div id="word-container"></div>
-        <div id="guesses-container">
+          </div>
+          <div id="word-container"></div>
+          <div id="guesses-container">
             Guesses left: <span id="guesses-left"></span>
-        </div>
-
-        <div id="input-container">
-            <input type="text" id="letter-input" maxlength="1" placeholder="Enter a letter">
+          </div>
+  
+          <div id="input-container">
+            <input
+              type="text"
+              id="letter-input"
+              maxlength="1"
+              placeholder="Enter a letter"
+            />
             <button id="guess-button">Guess</button>
-        </div>
-
-        <div id="power-up-container">
+          </div>
+  
+          <div id="power-up-container">
             <button class="power-up-button" id="extra-guess-button">Extra Guess</button>
             <button class="power-up-button" id="skip-word-button">Skip Word</button>
             <button class="power-up-button" id="fifty-fifty-button">50/50</button>
-        </div>
-
-        <div id="message-container"></div>
-
-        <div class="game-controls">
+          </div>
+  
+          <div id="message-container"></div>
+  
+          <div class="game-controls">
             <button id="new-game-button">New Game</button>
             <button id="sound-toggle-button">Toggle Sound</button>
-        </div>
-
-        <div id="game-log">
+          </div>
+  
+          <div id="game-log">
             <h3>Game Log</h3>
             <ul id="log-list"></ul>
-        </div>
-
+          </div>
+        </main>
+  
         <footer>
-            <button id="leaderboard-button">Leaderboard</button>
+          <button id="leaderboard-button">Leaderboard</button>
+          <button id="share-button">Share Game</button>
         </footer>
-    </div>
+      </div>
 
     <script src="app.js"></script>
 </body>

@@ -25,15 +25,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = document.querySelector(".container");
     const signInContainer = document.getElementById("buttonDiv");
     const playAsGuestButton = document.getElementById("play-as-guest-button");
+    const settingsContainer = document.getElementById("settings-container");
+    const wordLengthSelect = document.getElementById("word-length");
+    const gameModeSelect = document.getElementById("game-mode");
+    const shareButton = document.getElementById("share-button");
 
     // --- Constants and Variables ---
-    const wordApiUrl = "https://random-word-api.herokuapp.com/word?number=1&length=5";
+    const wordApiUrl = "/api/word"; // Using server-side route
     const imageApiUrl = "https://api.unsplash.com/search/photos?query=";
     const definitionApiUrl =
         "https://api.dictionaryapi.dev/api/v2/entries/en/";
 
     const imageApiKey = "YOUR-UNSPLASH-API-KEY"; // Replace with your Unsplash API key
-    // Replace with your Google Client ID
 
     let selectedWord = "";
     let selectedWordDefinition = "";
@@ -68,12 +71,13 @@ document.addEventListener("DOMContentLoaded", () => {
             updateDisplay();
         }
     });
+
     // Handle incoming guess broadcasts
     socket.on("guess-broadcast", (data) => {
+        // if user is logged in with google, display the guess broadcast in the game log
         if (!isGuestUser && data.userId !== userProfile.id) {
-            // Only display guesses from other users
             const message = `${data.userName} guessed: ${data.letter}`;
-            addLogEntry(message, true); // Add a special class to highlight user's guess
+            addLogEntry(message);
         }
     });
 
@@ -83,7 +87,14 @@ document.addEventListener("DOMContentLoaded", () => {
             showLoadingScreen();
             gameInProgress = false;
             enableGameControls(false); // Disable while loading
-            const wordData = await fetchWord();
+
+            // Fetch user data if signed in, before fetching the word
+            if (!isGuestUser && userProfile) {
+                await fetchUserData(userProfile.id);
+            }
+
+            const wordLength = wordLengthSelect.value;
+            const wordData = await fetchWord(wordLength); // Pass word length to fetchWord
             selectedWord = wordData.word.toLowerCase();
             selectedWordDefinition = wordData.definition;
             console.log("Selected word:", selectedWord);
@@ -118,15 +129,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- Fetching Word and Definition ---
-    async function fetchWord() {
+    async function fetchWord(wordLength = 5) {
         try {
-            const response = await fetch(wordApiUrl);
-            const data = await response.json();
-            const definition = await fetchWordDefinition(data[0]);
-            return {
-                word: data[0],
-                definition,
-            };
+            const response = await fetch(`${wordApiUrl}?length=${wordLength}`);
+            const wordData = await response.json();
+            return wordData;
         } catch (error) {
             console.error("Error fetching word:", error);
             const fallbackWords = [{
@@ -523,72 +530,70 @@ document.addEventListener("DOMContentLoaded", () => {
         hideLoadingScreen();
     }
 
-async function handleCredentialResponse(response) {
+    async function handleCredentialResponse(response) {
+        try {
+            const decoded = parseJwt(response.credential);
+            isGuestUser = false; // Reset guest user flag
+            userProfile = {
+                id: decoded.sub,
+                name: decoded.name,
+                email: decoded.email,
+                avatar: decoded.picture,
+            };
 
+            userName.textContent = userProfile.name;
+            userAvatar.src = userProfile.avatar;
+            userAvatar.style.display = "block";
+            signInContainer.style.display = "none";
+            playAsGuestButton.style.display = "none";
 
-    try {
-        const decoded = parseJwt(response.credential);
+            // Send credential to server for verification and user creation/update
+            const serverResponse = await fetch("/auth/google", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    credential: response.credential
+                }),
+            });
 
-        isGuestUser = false; // Reset guest user flag
-        userProfile = {
-            id: decoded.sub,
-            name: decoded.name,
-            email: decoded.email,
-            avatar: decoded.picture,
-            gameHistory: decoded.gameHistory
-        };
+            console.log("Server response status:", serverResponse.status); // Log status
 
-        userName.textContent = userProfile.name;
-        userAvatar.src = userProfile.avatar;
-        userAvatar.style.display = "block";
-        signInContainer.style.display = "none";
-        playAsGuestButton.style.display = "none";
+            if (!serverResponse.ok) {
+                const errorText = await serverResponse.text(); // Get error text from server
+                console.error("Server error:", errorText);
+                throw new Error(`Server-side authentication failed: ${errorText}`);
+            }
 
-        // Send credential to server for verification and user creation/update
-        const serverResponse = await fetch("/auth/google", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                credential: response.credential
-            }),
-        });
+            const serverData = await serverResponse.json();
+            console.log("User data from server:", serverData);
 
-        console.log("Server response status:", serverResponse.status); // Log status
+            // Use the data returned from the server to update the UI
+            userPoints = serverData.points;
+            gameLevel = serverData.level;
+            updateDisplay();
 
-        if (!serverResponse.ok) {
-            const errorText = await serverResponse.text(); // Get error text from server
-            console.error("Server error:", errorText);
-            throw new Error(`Server-side authentication failed: ${errorText}`);
+            if (serverData.gameHistory) {
+                serverData.gameHistory.forEach((entry) => {
+                    addLogEntry(
+                        `${entry.won ? "Won" : "Lost"} with "${
+              entry.word
+            }" on ${new Date(entry.timestamp).toLocaleString()}`
+                    );
+                });
+            }
+
+            // Notify the server that the user has connected
+            socket.emit("user-connected", userProfile.id);
+
+            // Initialize the game after sign-in and data fetch
+            initializeGame();
+        } catch (error) {
+            console.error("Error during Google Sign-In:", error);
+            messageContainer.textContent = "Error: Could not sign in with Google.";
         }
-
-        const serverData = await serverResponse.json();
-        console.log("User data from server:", serverData);
-
-        // Fetch user data from server and update UI
-        // Use the data returned from the server to update UI
-        userPoints = serverData.points;
-        gameLevel = serverData.level;
-        updateDisplay();
-        serverData.gameHistory.forEach((entry) => {
-            addLogEntry(
-                `${entry.won ? "Won" : "Lost"} with "${
-          entry.word
-        }" on ${new Date(entry.timestamp).toLocaleString()}`
-            );
-        });
-
-        // Notify the server that the user has connected
-        socket.emit("user-connected", userProfile.id);
-
-        // Initialize the game after sign-in and data fetch
-        initializeGame();
-    } catch (error) {
-        console.error("Error during Google Sign-In:", error);
-        messageContainer.textContent = "Error: Could not sign in with Google.";
     }
-}
 
     function initializeGuestUser() {
         isGuestUser = true;
@@ -620,12 +625,15 @@ async function handleCredentialResponse(response) {
     // --- Fetch User Data ---
     async function fetchUserData(userId) {
         try {
-            const response = await fetch(`/api/user/${userId}`);
+            const response = await fetch(`/api/user/${userId}`, {
+                headers: {
+                    Authorization: `Bearer ${getCookie("token")}`, // Add token to request header
+                },
+            });
             if (!response.ok) {
                 throw new Error("Failed to fetch user data");
             }
             const data = await response.json();
-
             userPoints = data.points;
             gameLevel = data.level;
             updateDisplay();
@@ -637,6 +645,7 @@ async function handleCredentialResponse(response) {
           }" on ${new Date(entry.timestamp).toLocaleString()}`
                 );
             });
+            return data;
         } catch (error) {
             console.error("Error:", error);
             messageContainer.textContent = "Error fetching user data.";
@@ -728,6 +737,52 @@ async function handleCredentialResponse(response) {
         alert("Leaderboard functionality coming soon!");
     });
     playAsGuestButton.addEventListener("click", initializeGuestUser);
+    // Add event listener for game mode selection
+    gameModeSelect.addEventListener("change", handleGameModeChange);
+
+    // Add event listener for word length selection
+    wordLengthSelect.addEventListener("change", initializeGame);
+
+    // Function to handle game mode change
+    function handleGameModeChange() {
+        const selectedMode = gameModeSelect.value;
+        if (selectedMode === "multiplayer") {
+            // Implement logic to start a new multiplayer game
+            // This might involve setting up a new room or session on the server
+            // and connecting multiple players to the same game instance
+            console.log("Multiplayer mode selected - functionality to be implemented");
+        } else {
+            initializeGame();
+        }
+    }
+
+    // --- Share Game Functionality ---
+    function shareGame() {
+        if (!navigator.share) {
+            alert("Your browser does not support the Web Share API.");
+            return;
+        }
+
+        const gameUrl = window.location.href;
+
+        navigator
+            .share({
+                title: "Play Word Wizard - The Ultimate Word Guessing Game!",
+                text: "Join me in playing Word Wizard! Test your vocabulary and have fun guessing words.",
+                url: gameUrl,
+            })
+            .then(() => console.log("Successful share"))
+            .catch((error) => console.log("Error sharing:", error));
+    }
+    // Event listener for the share button
+    shareButton.addEventListener("click", shareGame);
+
+    // --- Helper function to get cookie value by name ---
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(";").shift();
+    }
 
     // --- Initialize Google Sign-In ---
     initializeGoogleSignIn();

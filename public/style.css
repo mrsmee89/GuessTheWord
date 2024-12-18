@@ -1,13 +1,14 @@
 /* --- General Styles --- */
 body {
-  font-family: "Poppins", sans-serif; /* Modern font */
-  background-color: #f8f9fa; /* Light background */
+  font-family: "Patrick Hand", cursive; /* Fun and friendly font */
+  background-color: #f0f8ff; /* Alice Blue - a light, soft background */
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;
   align-items: center;
-  min-height: 100vh; /* Use min-height for responsiveness */
+  min-height: 100vh;
   margin: 0;
-  padding: 20px; /* Add padding for smaller screens */
+  padding: 20px;
   box-sizing: border-box;
 }
 
@@ -18,21 +19,21 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent */
+  background-color: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 1000; /* High z-index to be on top */
+  z-index: 1000;
 }
 
 .spinner {
-  border: 6px solid #e0e0e0; /* Light grey border */
-  border-top: 6px solid #3498db; /* Blue spinner */
+  border: 8px solid #f3d5e7; /* Soft pink */
+  border-top: 8px solid #a5d1f2; /* Light blue */
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1.5s linear infinite; /* Smooth animation */
+  width: 60px;
+  height: 60px;
+  animation: spin 1.2s linear infinite; /* Smooth and slightly faster spin */
 }
 
 @keyframes spin {
@@ -41,16 +42,24 @@ body {
   }
 }
 
+#loading-screen p {
+  margin-top: 15px;
+  font-size: 1.2rem;
+  color: #777;
+  font-weight: 600;
+}
+
 /* --- Main Container --- */
 .container {
   display: none;
-  max-width: 600px; /* Limit container width for better readability */
-  width: 100%; /* Responsive width */
-  background-color: #ffffff;
-  border-radius: 12px; /* Softer corners */
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Subtle shadow */
-  padding: 30px;
+  max-width: 700px;
+  width: 100%;
+  background-color: #fff;
+  border-radius: 20px; /* Rounded corners */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); /* More prominent shadow */
+  padding: 40px;
   text-align: center;
+  position: relative; /* For absolute positioning of elements */
 }
 
 /* --- Header --- */
@@ -58,239 +67,323 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  margin-bottom: 30px;
+  flex-wrap: wrap;
 }
 
 #user-info {
   display: flex;
   align-items: center;
-  margin-bottom: 10px; /* Add margin for smaller screens */
+  margin-bottom: 15px;
 }
 
 #user-avatar {
-  width: 45px;
-  height: 45px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  margin-right: 12px;
-  display: none;
+  margin-right: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Add shadow to avatar */
+  display: none; /* Initially hidden */
 }
 
 #user-name {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #333;
 }
 
 #user-points,
 #game-level {
   font-size: 1rem;
-  color: #777; /* Lighter color for secondary info */
+  color: #666;
   margin-left: 15px;
+}
+
+/* --- Settings --- */
+#settings-container {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+#settings-container label {
+  font-weight: 600;
+  color: #333;
+}
+
+#settings-container select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  appearance: none; /* Remove default arrow */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23333' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E"); /* Custom arrow */
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  padding-right: 30px; /* Add padding for the custom arrow */
+}
+
+#settings-container select:focus {
+  outline: none;
+  border-color: #ff9f1c; /* Highlight on focus */
+  box-shadow: 0 0 0 0.2rem rgba(255, 159, 28, 0.25); /* Add focus effect */
 }
 
 /* --- Image Container --- */
 #image-container {
-  margin-bottom: 25px;
+  margin-bottom: 30px;
   position: relative;
   overflow: hidden;
-  border-radius: 12px; /* Match container */
+  border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 #image-container img {
   max-width: 100%;
-  height: auto; /* Maintain aspect ratio */
-  border-radius: 12px;
-  display: block; /* Remove extra space below image */
+  height: auto;
+  display: block;
+  border-radius: 15px; /* Match container */
+  transition: filter 0.5s ease; /* Smooth transition for blur */
 }
 
 .blur {
-  filter: blur(10px); /* Adjust blur intensity */
-  transition: filter 0.5s ease;
+  filter: blur(15px);
 }
 
-/* --- Word and Guesses --- */
+/* --- Word Container --- */
 #word-container {
-  font-size: 2.5rem;
+  font-family: "Patrick Hand", cursive; /* Fun, handwriting-style font */
+  font-size: 4rem;
   font-weight: 700;
-  letter-spacing: 0.3rem;
-  margin-bottom: 20px;
-  word-wrap: break-word; /* Prevent overflow */
+  letter-spacing: 0.5rem;
+  margin-bottom: 25px;
+  word-wrap: break-word;
+  color: #ff9f1c; /* Orange color for the word */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Add a text shadow */
 }
 
-#guesses-left {
-  font-size: 1.2rem;
-  color: #777;
+/* --- Guesses Left --- */
+#guesses-container {
   margin-bottom: 25px;
 }
 
-/* --- Input --- */
+#guesses-left {
+  font-size: 1.3rem;
+  color: #ff6b6b; /* Red for incorrect guesses */
+  font-weight: 600;
+}
+
+/* --- Input Container --- */
 #input-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 30px;
 }
 
 #letter-input {
-  width: 60px;
-  height: 50px; /* Make input taller */
-  font-size: 1.8rem;
+  width: 65px;
+  height: 55px;
+  font-size: 2rem;
+  font-weight: 600;
   text-align: center;
-  border: 2px solid #ced4da; /* Neutral border */
-  border-radius: 8px;
-  margin-right: 10px;
+  border: 3px solid #ff9f1c; /* Orange border */
+  border-radius: 10px;
+  margin-right: 12px;
   padding: 5px;
-  outline: none; /* Remove default focus outline */
+  outline: none;
 }
 
 #letter-input:focus {
-  border-color: #80bdff; /* Highlight on focus */
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Add focus effect */
+  border-color: #ffcc69; /* Lighter orange on focus */
+  box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
 }
 
 #guess-button {
-  background-color: #007bff; /* Primary blue */
+  background-color: #ff9f1c; /* Orange button */
   color: #fff;
   border: none;
   padding: 12px 25px;
-  font-size: 1.1rem;
-  border-radius: 8px;
+  font-size: 1.2rem;
+  border-radius: 10px;
   cursor: pointer;
   transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16); /* Add a subtle shadow */
 }
 
 #guess-button:hover {
-  background-color: #0069d9; /* Darker blue on hover */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15); /* Add hover shadow */
+  background-color: #e68a00; /* Darker orange on hover */
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
 #guess-button:disabled {
-    background-color: #6c757d; /* Disabled state color */
-    cursor: default;
+  background-color: #cc7a00; /* Disabled state */
+  cursor: default;
+  box-shadow: none;
 }
 
 /* --- Messages --- */
 #message-container {
-  min-height: 2.5rem; /* Reserve space for messages */
+  min-height: 2.5rem;
   margin-bottom: 25px;
-  font-size: 1.1rem;
-  color: #dc3545; /* Red for errors */
+  font-size: 1.2rem;
+  color: #ff6b6b; /* Red for errors or important messages */
 }
 
 /* --- Game Controls --- */
 .game-controls {
-  margin-top: 25px;
+  margin-top: 30px;
+  display: flex; /* Use flex for better alignment */
+  justify-content: center; /* Center buttons */
+  gap: 15px; /* Space between buttons */
 }
 
 .game-controls button {
-  background-color: #343a40; /* Dark grey */
+  background-color: #545454;
   color: #fff;
   border: none;
   padding: 10px 20px;
-  font-size: 1rem;
-  border-radius: 8px;
+  font-size: 1.1rem;
+  border-radius: 10px;
   cursor: pointer;
-  margin: 0 5px;
   transition: background-color 0.3s ease;
 }
 
 .game-controls button:hover {
-  background-color: #23272b; /* Lighter grey on hover */
+  background-color: #3f3f3f;
 }
 
 /* --- Hints --- */
 #hint-container {
-    display: flex;
-    justify-content: center;
-    align-items: center; /* Center the hint buttons */
-    margin-bottom: 20px;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
 }
 
 .hint-button {
-    background-color: #6f42c1; /* Soft purple */
-    color: #fff;
-    border: none;
-    padding: 8px 16px;
-    font-size: 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 5px; /* Add margin for spacing */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  background-color: #735290;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  margin: 5px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .hint-button:hover {
-    background-color: #5a319e; /* Darker purple on hover */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  background-color: #5f3875;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.hint-button:disabled {
+  background-color: #9d7cc1;
+  cursor: default;
+  box-shadow: none;
 }
 
 /* --- Power-ups --- */
 #power-up-container {
-    display: flex;
-    justify-content: center;
-    align-items: center; /* Center the power-up buttons */
-    margin-bottom: 25px;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
 }
 
 .power-up-button {
-    background-color: #ffc107; /* Yellow */
-    color: #212529; /* Dark text for contrast */
-    border: none;
-    padding: 8px 16px;
-    font-size: 1rem;
-    border-radius: 8px;
-    cursor: pointer;
-    margin: 5px; /* Add margin for spacing */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    animation: pulse 2s infinite; /* Add a subtle pulse effect */
+  background-color: #f2d649; /* Yellow */
+  color: #212529;
+  border: none;
+  padding: 10px 18px;
+  font-size: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  margin: 5px;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; /* Add transform for a 'bounce' effect on hover */
+  animation: pulse 2.5s infinite ease-in-out; /* Slower pulse animation */
 }
 
 .power-up-button:hover {
-    background-color: #e0a800; /* Darker yellow on hover */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+  background-color: #e0c500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px); /* Add a slight 'bounce' effect on hover */
+}
+
+.power-up-button:disabled {
+  background-color: #ffe89e;
+  cursor: default;
+  box-shadow: none;
 }
 
 /* Pulse Animation */
 @keyframes pulse {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
-    100% {
-        transform: scale(1);
-    }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* --- Game Log --- */
 #game-log {
-  margin-top: 30px;
-  border-top: 2px solid #dee2e6; /* Lighter border */
-  padding-top: 20px;
+  margin-top: 35px;
+  border-top: 3px solid #eee;
+  padding-top: 25px;
+}
+
+#game-log h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin-bottom: 15px;
 }
 
 #log-list {
   list-style: none;
   padding: 0;
+  max-height: 200px; /* Limit log height */
+  overflow-y: auto; /* Add scrollbar if needed */
 }
 
 #log-list li {
   font-size: 0.9rem;
-  color: #666; /* Lighter text color */
-  margin-bottom: 8px;
-  line-height: 1.4; /* Improve readability */
+  color: #666;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  word-wrap: break-word; /* Prevent long words from overflowing */
+}
+
+#log-list .user-guess {
+  font-weight: bold;
+  color: #2e86de; /* Highlight user's guess */
 }
 
 /* --- Footer --- */
 footer {
   margin-top: 30px;
   text-align: center;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
-#leaderboard-button {
-  background-color: #28a745; /* Green */
+#leaderboard-button,
+#share-button {
+  background-color: #5865f2;
   color: #fff;
   border: none;
   padding: 10px 20px;
@@ -298,15 +391,17 @@ footer {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  margin-top: 10px;
 }
 
-#leaderboard-button:hover {
-  background-color: #218838; /* Darker green on hover */
+#leaderboard-button:hover,
+#share-button:hover {
+  background-color: #4552c8;
 }
 
 /* --- Animations --- */
 .fade-in {
-  animation: fade-in 0.5s ease forwards; /* Add 'forwards' to keep end state */
+  animation: fade-in 0.5s ease forwards;
 }
 
 @keyframes fade-in {
@@ -318,35 +413,62 @@ footer {
   }
 }
 
+/* --- Google Sign-In Button --- */
+#buttonDiv {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* --- Play as Guest Button --- */
+#play-as-guest-button {
+  background-color: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-left: 10px;
+}
+
+#play-as-guest-button:hover {
+  background-color: #5a6268;
+}
+
 /* --- Responsive Design --- */
 @media (max-width: 500px) {
   .container {
-    padding: 20px; /* Reduce padding on small screens */
+    padding: 20px;
   }
 
   #word-container {
-    font-size: 2rem; /* Reduce font size */
+    font-size: 2.5rem;
   }
 
   #letter-input {
-    width: 45px;
-    height: 40px; /* Adjust input size */
-    font-size: 1.4rem;
+    width: 50px;
+    height: 45px;
+    font-size: 1.6rem;
   }
 
   .hint-button,
-  .power-up-button {
-    padding: 6px 12px; /* Reduce button padding */
+  .power-up-button,
+  .game-controls button,
+  #leaderboard-button,
+  #share-button {
+    padding: 8px 15px;
     font-size: 0.9rem;
   }
-}
 
-/* in your style.css, you can add specific styling for the guest button */
-#play-as-guest-button {
-  margin-left: 10px; /* Add some space between the Google button and the guest button */
-  /* Add more styles as needed */
-}
-#log-list .user-guess {
-    font-weight: bold;
-    color: blue; /* Or any color you prefer */
+  #settings-container label {
+    font-size: 0.9rem;
+  }
+
+  #settings-container select {
+    font-size: 0.9rem;
+  }
 }
