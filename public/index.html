@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Wizard - The Ultimate Word Guessing Game!</title>
-    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div id="loading-screen">
         <div class="spinner"></div>
@@ -23,11 +23,11 @@
                 <div id="auth-buttons">
                     <div id="buttonDiv"></div>
                     <button id="play-as-guest-button">Play as Guest</button>
-                    <button id="logout-button" style="display: none;">Logout</button>
                 </div>
-                <img id="user-avatar" src="default-avatar.png" alt="Avatar">
+                <img id="user-avatar" src="default-avatar.png" alt="Avatar" style="display: none;">
                 <span id="user-name"></span>
                 <span id="user-points">0 Points</span>
+                <button id="logout-button" style="display: none;">Logout</button>
             </div>
             <div id="game-level">Level 1</div>
         </header>
@@ -48,9 +48,9 @@
             </div>
             <div id="image-container"></div>
             <div id="hint-container">
-                <button class="hint-button" id="image-hint-button">Image Hint</button>
-                <button class="hint-button" id="definition-hint-button">Definition Hint</button>
-                <button class="hint-button" id="letter-hint-button">Letter Hint</button>
+                <button class="hint-button" id="image-hint-button" disabled>Image Hint</button>
+                <button class="hint-button" id="definition-hint-button" disabled>Definition Hint</button>
+                <button class="hint-button" id="letter-hint-button" disabled>Letter Hint</button>
             </div>
             <div id="word-container"></div>
             <div id="guesses-container">
@@ -58,22 +58,22 @@
             </div>
 
             <div id="input-container">
-                <input type="text" id="letter-input" maxlength="1" placeholder="Enter a letter">
-                <button id="guess-button">Guess</button>
+                <input type="text" id="letter-input" maxlength="1" placeholder="Enter a letter" disabled>
+                <button id="guess-button" disabled>Guess</button>
                 <input type="hidden" id="game-id" value="">
             </div>
 
             <div id="power-up-container">
-                <button class="power-up-button" id="extra-guess-button">Extra Guess</button>
-                <button class="power-up-button" id="skip-word-button">Skip Word</button>
-                <button class="power-up-button" id="fifty-fifty-button">50/50</button>
+                <button class="power-up-button" id="extra-guess-button" disabled>Extra Guess</button>
+                <button class="power-up-button" id="skip-word-button" disabled>Skip Word</button>
+                <button class="power-up-button" id="fifty-fifty-button" disabled>50/50</button>
             </div>
 
             <div id="message-container"></div>
 
             <div class="game-controls">
                 <button id="new-game-button">New Game</button>
-                <button id="sound-toggle-button">Toggle Sound</button>
+                <button id="sound-toggle-button">Sound: ON</button>
             </div>
 
             <div id="game-log">
@@ -88,7 +88,10 @@
         </footer>
     </div>
 
-    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async></script>
     <script src="app.js"></script>
 </body>
+
 </html>

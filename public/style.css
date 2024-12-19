@@ -332,9 +332,11 @@ header {
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.08);
   }
+
   100% {
     transform: scale(1);
   }
@@ -410,28 +412,24 @@ footer {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
 /* --- Google Sign-In Button --- */
-#buttonDiv {
-  margin-bottom: 20px;
+#auth-buttons {
   display: flex;
-  justify-content: space-around;
   align-items: center;
-  flex-wrap: wrap;
+  margin-bottom: 15px;
 }
 
 #buttonDiv {
-  margin: 10px;
-  min-width: 200px;
-  height: 40px;
-  display: block !important;
+  margin-right: 15px;
 }
 
-#buttonDiv > div {
+#buttonDiv>div {
   margin: 0 auto;
 }
 
@@ -445,11 +443,27 @@ footer {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  margin-left: 10px;
 }
 
 #play-as-guest-button:hover {
   background-color: #5a6268;
+}
+
+/* --- Logout Button --- */
+#logout-button {
+  background-color: #dc3545;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-left: 10px;
+}
+
+#logout-button:hover {
+  background-color: #c82333;
 }
 
 /* --- Responsive Design --- */
@@ -505,34 +519,4 @@ footer {
   padding: 10px;
   border-radius: 8px;
   margin: 10px 0;
-}
-
-/* Add styles for auth buttons and logout button */
-#auth-buttons {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-#logout-button {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s ease;
-}
-
-#logout-button:hover {
-  background-color: #c82333;
-}
-
-/* Update Google Sign-In button container */
-#buttonDiv {
-  min-width: 200px;
-  height: 40px;
-  margin: 0;
 }
